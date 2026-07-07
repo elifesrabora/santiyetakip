@@ -415,8 +415,8 @@ async function appendRecordToSheets(collection, item) {
   isSyncing = true;
   try {
     setSyncStatus("Kayıt Sheets'e yazılıyor...");
-    const response = await appendSheetsRecord(collection, item);
-    setSyncStatus(`${response.sheetName || "Sheets"} sayfasına yazıldı: satır ${response.rowNumber || "-"}`);
+    appendSheetsRecord(collection, item);
+    setSyncStatus("Kayıt ilgili Sheets sayfasına gönderildi.");
   } catch (error) {
     setSyncStatus(`Sheets'e yazma hatası: ${error.message}`);
   } finally {
@@ -459,8 +459,13 @@ async function saveSheetsData(data) {
   return callSheetsJsonp("save", data);
 }
 
-async function appendSheetsRecord(collection, item) {
-  return callSheetsJsonp("append", { collection, item });
+function appendSheetsRecord(collection, item) {
+  submitSheetsForm({
+    action: "append",
+    spreadsheetId,
+    collection,
+    item: JSON.stringify(item)
+  });
 }
 
 function loadSheetsData() {
@@ -508,6 +513,35 @@ function callSheetsJsonp(action, data = null) {
     script.src = url.toString();
     document.body.append(script);
   });
+}
+
+function submitSheetsForm(fields) {
+  const iframeName = `sheetsTarget_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const iframe = document.createElement("iframe");
+  iframe.name = iframeName;
+  iframe.hidden = true;
+
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = settings.scriptUrl;
+  form.target = iframeName;
+  form.hidden = true;
+
+  Object.entries(fields).forEach(([name, value]) => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.append(input);
+  });
+
+  document.body.append(iframe, form);
+  form.submit();
+
+  window.setTimeout(() => {
+    form.remove();
+    iframe.remove();
+  }, 10000);
 }
 
 function normalizeRemoteState(remote) {

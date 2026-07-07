@@ -54,7 +54,7 @@ Baglamak icin:
 
 Kodda degisiklik yaparsan Apps Script'te tekrar `Deploy > Manage deployments > Edit > New version > Deploy` yapman gerekir.
 
-Baglanti kaydedildikten sonra uygulama acilista Sheets'ten son veriyi alir. Yeni kayit eklediginde ilgili Sheets sayfasina tek satir olarak yazar. Silme ve toplu duzeltmeler icin `Sheets'e Gonder` butonu tum tabloyu yeniden yazar.
+Baglanti kaydedildikten sonra yeni kayit eklediginde ilgili Sheets sayfasina tek satir olarak yazar. Bu islem icin `Sheets'e Gonder` veya `Sheets'ten Cek` butonuna basmak gerekmez.
 
 ## Sonraki gelistirmeler
 

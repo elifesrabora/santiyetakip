@@ -21,9 +21,15 @@ const TABLES = {
 
 function doPost(event) {
   try {
-    const payload = JSON.parse(event.postData.contents || "{}");
+    const payload = parsePostPayload(event);
     const spreadsheet = SpreadsheetApp.openById(payload.spreadsheetId || DEFAULT_SPREADSHEET_ID);
     prepareSheets(spreadsheet);
+
+    if (payload.action === "append") {
+      const item = typeof payload.item === "string" ? JSON.parse(payload.item) : payload.item || {};
+      const result = appendData(spreadsheet, payload.collection, item);
+      return jsonResponse({ ok: true, sheetName: result.sheetName, rowNumber: result.rowNumber });
+    }
 
     if (payload.action === "save") {
       const totalRows = saveData(spreadsheet, payload.data || {});
@@ -38,6 +44,11 @@ function doPost(event) {
   } catch (error) {
     return jsonResponse({ ok: false, error: error.message });
   }
+}
+
+function parsePostPayload(event) {
+  if (event.parameter && event.parameter.action) return event.parameter;
+  return JSON.parse(event.postData.contents || "{}");
 }
 
 function doGet(event) {
