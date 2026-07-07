@@ -406,19 +406,11 @@ async function appendRecordToSheets(collection, item) {
     setSyncStatus("Kayıt cihazda saklandı. Sheets için önce Apps Script URL'sini kaydet.");
     return;
   }
-  if (isSyncing) {
-    window.setTimeout(() => appendRecordToSheets(collection, item), 800);
-    return;
-  }
-  isSyncing = true;
   try {
-    setSyncStatus("Kayıt Sheets'e yazılıyor...");
-    const response = await appendSheetsRecord(collection, item);
-    setSyncStatus(`${response.sheetName || "Sheets"} sayfasına yazıldı: satır ${response.rowNumber || "-"}`);
+    appendSheetsRecord(collection, item);
+    setSyncStatus("Kayıt Sheets'e gönderildi.");
   } catch (error) {
     setSyncStatus(`Sheets'e yazma hatası: ${error.message}`);
-  } finally {
-    isSyncing = false;
   }
 }
 
@@ -458,12 +450,15 @@ async function saveSheetsData(data) {
 }
 
 function appendSheetsRecord(collection, item) {
-  return submitSheetsForm({
-    action: "append",
-    spreadsheetId,
-    collection,
-    item: JSON.stringify(item)
-  });
+  const url = new URL(settings.scriptUrl);
+  url.searchParams.set("action", "append");
+  url.searchParams.set("spreadsheetId", spreadsheetId);
+  url.searchParams.set("collection", collection);
+  url.searchParams.set("item", JSON.stringify(item));
+
+  const beacon = new Image();
+  beacon.referrerPolicy = "no-referrer";
+  beacon.src = url.toString();
 }
 
 function loadSheetsData() {

@@ -63,6 +63,22 @@ function doGet(event) {
     const spreadsheet = SpreadsheetApp.openById(params.spreadsheetId || DEFAULT_SPREADSHEET_ID);
     prepareSheets(spreadsheet);
 
+    if (params.action === "ping") {
+      return jsonResponse({ ok: true, message: "Saha Defteri Apps Script calisiyor." });
+    }
+
+    if (params.action === "testAppend") {
+      const result = appendData(spreadsheet, "sites", {
+        id: "test-" + new Date().getTime(),
+        name: "Test Santiyesi",
+        location: "Baglanti testi",
+        chief: "",
+        status: "Aktif",
+        note: "Apps Script test kaydi"
+      });
+      return jsonResponse({ ok: true, sheetName: result.sheetName, rowNumber: result.rowNumber });
+    }
+
     if (params.action === "save") {
       const data = params.payload ? JSON.parse(params.payload) : {};
       const totalRows = saveData(spreadsheet, data);
@@ -70,8 +86,8 @@ function doGet(event) {
     }
 
     if (params.action === "append") {
-      const payload = params.payload ? JSON.parse(params.payload) : {};
-      const result = appendData(spreadsheet, payload.collection, payload.item || {});
+      const item = params.item ? JSON.parse(params.item) : {};
+      const result = appendData(spreadsheet, params.collection, item);
       return response({ ok: true, sheetName: result.sheetName, rowNumber: result.rowNumber }, params.callback);
     }
 

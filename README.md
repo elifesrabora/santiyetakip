@@ -54,7 +54,16 @@ Baglamak icin:
 
 Kodda degisiklik yaparsan Apps Script'te tekrar `Deploy > Manage deployments > Edit > New version > Deploy` yapman gerekir.
 
-Baglanti kaydedildikten sonra yeni kayit eklediginde ilgili Sheets sayfasina tek satir olarak yazar. Bu islem icin `Sheets'e Gonder` veya `Sheets'ten Cek` butonuna basmak gerekmez.
+Baglanti kaydedildikten sonra yeni kayit eklediginde ilgili Sheets sayfasina tek satir olarak yazar. Bu islem icin ek bir butona basmak gerekmez.
+
+Apps Script web app URL'sini test etmek icin:
+
+```text
+WEB_APP_URL?action=ping
+WEB_APP_URL?action=testAppend
+```
+
+`testAppend`, `Santiyeler` sayfasina test satiri eklemelidir.
 
 ## Sonraki gelistirmeler
 
