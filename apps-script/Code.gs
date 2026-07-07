@@ -40,13 +40,15 @@ function doPost(event) {
   }
 }
 
-function doGet() {
+function doGet(event) {
   try {
-    const spreadsheet = SpreadsheetApp.openById(DEFAULT_SPREADSHEET_ID);
+    const params = event.parameter || {};
+    const spreadsheet = SpreadsheetApp.openById(params.spreadsheetId || DEFAULT_SPREADSHEET_ID);
     prepareSheets(spreadsheet);
-    return jsonResponse({ ok: true, data: loadData(spreadsheet) });
+    return response({ ok: true, data: loadData(spreadsheet) }, params.callback);
   } catch (error) {
-    return jsonResponse({ ok: false, error: error.message });
+    const callback = event && event.parameter ? event.parameter.callback : "";
+    return response({ ok: false, error: error.message }, callback);
   }
 }
 
@@ -117,4 +119,11 @@ function jsonResponse(payload) {
   return ContentService
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function response(payload, callback) {
+  if (!callback) return jsonResponse(payload);
+  return ContentService
+    .createTextOutput(callback + "(" + JSON.stringify(payload) + ");")
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }

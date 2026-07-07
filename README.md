@@ -52,6 +52,8 @@ Baglamak icin:
 6. Deploy sonrasinda verilen `/exec` ile biten URL'yi uygulamadaki `Sheets` ekranina yapistir.
 7. `Sheets'e Gonder` veya `Sheets'ten Cek` butonunu kullan.
 
+Kodda degisiklik yaparsan Apps Script'te tekrar `Deploy > Manage deployments > Edit > New version > Deploy` yapman gerekir.
+
 ## Sonraki gelistirmeler
 
 - Fotoğraf ekleme

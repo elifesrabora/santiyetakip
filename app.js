@@ -376,8 +376,8 @@ async function pushToSheets() {
   if (!requireScriptUrl()) return;
   setSyncStatus("Sheets'e gönderiliyor...");
   try {
-    const response = await callSheetsApi("save", state);
-    setSyncStatus(`Sheets güncellendi. ${response.totalRows || 0} satır yazıldı.`);
+    await saveSheetsData(state);
+    setSyncStatus("Gönderim yapıldı. Google Sheets sayfasını yenileyip kayıtları kontrol edebilirsin.");
   } catch (error) {
     setSyncStatus(`Gönderme hatası: ${error.message}`);
   }
@@ -387,7 +387,7 @@ async function pullFromSheets() {
   if (!requireScriptUrl()) return;
   setSyncStatus("Sheets'ten veri çekiliyor...");
   try {
-    const response = await callSheetsApi("load");
+    const response = await loadSheetsData();
     state = normalizeRemoteState(response.data || {});
     saveState();
     render();
@@ -397,15 +397,53 @@ async function pullFromSheets() {
   }
 }
 
-async function callSheetsApi(action, data = null) {
-  const response = await fetch(settings.scriptUrl, {
+async function saveSheetsData(data) {
+  await fetch(settings.scriptUrl, {
     method: "POST",
+    mode: "no-cors",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action, spreadsheetId, data })
+    body: JSON.stringify({ action: "save", spreadsheetId, data })
   });
-  const result = await response.json();
-  if (!result.ok) throw new Error(result.error || "Bilinmeyen hata");
-  return result;
+}
+
+function loadSheetsData() {
+  return new Promise((resolve, reject) => {
+    const callbackName = `sahaDefteriCallback_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const script = document.createElement("script");
+    const url = new URL(settings.scriptUrl);
+
+    url.searchParams.set("action", "load");
+    url.searchParams.set("spreadsheetId", spreadsheetId);
+    url.searchParams.set("callback", callbackName);
+
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Sheets yanıtı zaman aşımına uğradı."));
+    }, 15000);
+
+    window[callbackName] = (result) => {
+      cleanup();
+      if (!result.ok) {
+        reject(new Error(result.error || "Bilinmeyen hata"));
+        return;
+      }
+      resolve(result);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Apps Script URL'si yüklenemedi."));
+    };
+
+    function cleanup() {
+      window.clearTimeout(timeout);
+      delete window[callbackName];
+      script.remove();
+    }
+
+    script.src = url.toString();
+    document.body.append(script);
+  });
 }
 
 function normalizeRemoteState(remote) {
