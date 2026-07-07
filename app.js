@@ -11,6 +11,8 @@ const initialState = {
 
 let state = loadState();
 let settings = loadSettings();
+let syncTimer = null;
+let isSyncing = false;
 
 const views = {
   overview: "Genel Bakış",
@@ -47,6 +49,7 @@ document.getElementById("settingsForm").addEventListener("submit", (event) => {
   settings.scriptUrl = document.getElementById("scriptUrl").value.trim();
   saveSettings();
   setSyncStatus("Bağlantı kaydedildi.");
+  autoPullFromSheets();
 });
 
 bindForm("siteForm", (data) => {
@@ -96,6 +99,7 @@ bindForm("issueForm", (data) => {
 });
 
 render();
+autoPullFromSheets();
 
 function bindForm(id, onSubmit) {
   const form = document.getElementById(id);
@@ -109,6 +113,7 @@ function bindForm(id, onSubmit) {
       input.value = today;
     });
     render();
+    scheduleAutoSync();
   });
 }
 
@@ -329,6 +334,7 @@ document.addEventListener("click", (event) => {
   state[collection] = state[collection].filter((item) => item.id !== button.dataset.id);
   saveState();
   render();
+  scheduleAutoSync();
 });
 
 function seedExampleData() {
@@ -349,6 +355,7 @@ function seedExampleData() {
   };
   saveState();
   render();
+  scheduleAutoSync();
 }
 
 function exportJson() {
@@ -370,6 +377,7 @@ function clearAllData() {
   state = structuredClone(initialState);
   saveState();
   render();
+  scheduleAutoSync();
 }
 
 async function pushToSheets() {
@@ -380,6 +388,44 @@ async function pushToSheets() {
     setSyncStatus("Gönderim yapıldı. Google Sheets sayfasını yenileyip kayıtları kontrol edebilirsin.");
   } catch (error) {
     setSyncStatus(`Gönderme hatası: ${error.message}`);
+  }
+}
+
+function scheduleAutoSync() {
+  if (!settings.scriptUrl) return;
+  window.clearTimeout(syncTimer);
+  setSyncStatus("Değişiklik kaydedildi. Sheets'e otomatik gönderilecek...");
+  syncTimer = window.setTimeout(() => autoPushToSheets(), 900);
+}
+
+async function autoPushToSheets() {
+  if (!settings.scriptUrl || isSyncing) return;
+  isSyncing = true;
+  try {
+    setSyncStatus("Sheets'e otomatik gönderiliyor...");
+    await saveSheetsData(state);
+    setSyncStatus(`Otomatik senkronize edildi: ${formatTime(new Date())}`);
+  } catch (error) {
+    setSyncStatus(`Otomatik gönderme hatası: ${error.message}`);
+  } finally {
+    isSyncing = false;
+  }
+}
+
+async function autoPullFromSheets() {
+  if (!settings.scriptUrl || isSyncing) return;
+  isSyncing = true;
+  try {
+    setSyncStatus("Sheets'ten son veri alınıyor...");
+    const response = await loadSheetsData();
+    state = normalizeRemoteState(response.data || {});
+    saveState();
+    render();
+    setSyncStatus(`Sheets'ten son veri alındı: ${formatTime(new Date())}`);
+  } catch (error) {
+    setSyncStatus(`Otomatik çekme hatası: ${error.message}`);
+  } finally {
+    isSyncing = false;
   }
 }
 
@@ -484,6 +530,10 @@ function csvCell(value = "") {
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatTime(value) {
+  return new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" }).format(value);
 }
 
 function priorityScore(priority) {
