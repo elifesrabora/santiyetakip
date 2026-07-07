@@ -421,6 +421,7 @@ function renderPlans() {
 function renderPlanningCalendar() {
   const calendar = document.getElementById("weekCalendar");
   if (!calendar) return;
+  if (!isValidDate(activeWeekStart)) activeWeekStart = getWeekStart(today);
   calendar.innerHTML = "";
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(activeWeekStart, index));
   document.getElementById("weekLabel").textContent = `${formatDate(weekDays[0])} - ${formatDate(weekDays[6])}`;
@@ -1115,27 +1116,38 @@ function slugify(value = "") {
     .replace(/^-|-$/g, "") || "rapor";
 }
 
+function parseDate(value) {
+  if (value instanceof Date) return new Date(value);
+  if (!value) return new Date(`${today}T12:00:00`);
+  const rawValue = String(value);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(rawValue) ? new Date(`${rawValue}T12:00:00`) : new Date(rawValue);
+  return isValidDate(date) ? date : new Date(`${today}T12:00:00`);
+}
+
+function isValidDate(value) {
+  return value instanceof Date && !Number.isNaN(value.getTime());
+}
+
 function formatDate(value) {
-  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(`${value}T12:00:00`));
+  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric" }).format(parseDate(value));
 }
 
 function formatTime(value) {
-  return new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" }).format(value);
+  return new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" }).format(parseDate(value));
 }
 
 function toDateKey(value) {
-  const date = value instanceof Date ? value : new Date(`${value}T12:00:00`);
-  return date.toISOString().slice(0, 10);
+  return parseDate(value).toISOString().slice(0, 10);
 }
 
 function addDays(value, amount) {
-  const date = value instanceof Date ? new Date(value) : new Date(`${value}T12:00:00`);
+  const date = parseDate(value);
   date.setDate(date.getDate() + amount);
   return date;
 }
 
 function getWeekStart(value) {
-  const date = value instanceof Date ? new Date(value) : new Date(`${value}T12:00:00`);
+  const date = parseDate(value);
   const day = date.getDay() || 7;
   date.setDate(date.getDate() - day + 1);
   return date;

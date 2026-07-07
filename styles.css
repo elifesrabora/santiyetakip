@@ -328,8 +328,19 @@ button {
 
 .site-detail-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.site-detail-grid > .panel {
+  display: grid;
+  gap: 2px;
+}
+
+.site-detail-grid .panel-header {
+  margin-bottom: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
 }
 
 .crew-builder {
