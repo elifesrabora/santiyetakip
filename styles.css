@@ -379,6 +379,20 @@ textarea {
   background: #fff;
 }
 
+.report-summary {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.report-summary:hover {
+  border-color: var(--accent);
+}
+
 .item summary {
   list-style: none;
   cursor: pointer;
@@ -426,37 +440,53 @@ textarea {
 .week-calendar {
   display: grid;
   grid-template-columns: repeat(7, minmax(150px, 1fr));
-  gap: 10px;
+  gap: 0;
   overflow-x: auto;
-  padding: 10px 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 0;
 }
 
 .day-column {
-  min-height: 210px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  min-height: 260px;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
   padding: 10px;
-  background: var(--surface-2);
+  background: #fff;
+}
+
+.day-column:last-child {
+  border-right: 0;
 }
 
 .day-column.today {
-  border-color: var(--accent);
   background: #f6fbf8;
 }
 
 .day-head {
   display: grid;
   gap: 2px;
-  margin-bottom: 10px;
+  min-height: 62px;
+  margin: -10px -10px 10px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
 }
 
 .day-head strong {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .day-head span {
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.day-number {
+  color: var(--accent);
+  font-size: 1.35rem;
+  font-weight: 800;
 }
 
 .plan-chip {
@@ -481,6 +511,54 @@ textarea {
 
 .plan-list-header {
   margin-top: 10px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(23, 33, 28, 0.48);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.modal-panel {
+  display: grid;
+  gap: 16px;
+  width: min(760px, 100%);
+  max-height: min(720px, 92vh);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(23, 33, 28, 0.24);
+}
+
+.modal-header,
+.modal-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-header h2 {
+  margin: 0;
+}
+
+.modal-body {
+  display: grid;
+  gap: 12px;
+}
+
+.modal-actions {
+  justify-content: flex-end;
 }
 
 .tiny-button {

@@ -274,6 +274,24 @@
       </main>
     </div>
 
-    <script src="app.js?v=20260707-fix-startup"></script>
+    <div class="modal-backdrop" id="reportModal" hidden>
+      <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Günlük Rapor</p>
+            <h2 id="reportModalTitle">Rapor Detayı</h2>
+            <p class="helper-text" id="reportModalMeta"></p>
+          </div>
+          <button class="tiny-button" id="closeReportModal" type="button" title="Kapat">x</button>
+        </div>
+        <div class="modal-body" id="reportModalBody"></div>
+        <div class="modal-actions">
+          <button class="ghost-button" id="downloadReport" type="button">İndir</button>
+          <button class="primary-button" id="editReportFromModal" type="button">Düzenle</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="app.js?v=20260707-report-modal-calendar"></script>
   </body>
 </html>

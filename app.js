@@ -17,6 +17,7 @@ let isSyncing = false;
 let activeSiteId = state.sites[0]?.id || "";
 let editingReportId = "";
 let activeWeekStart;
+let activeReportModalId = "";
 
 const views = {
   overview: "Genel Bakış",
@@ -51,6 +52,12 @@ document.getElementById("cancelReportEdit").addEventListener("click", cancelRepo
 document.getElementById("addPlanCrewRow").addEventListener("click", () => addCrewRow("planCrewBuilder"));
 document.getElementById("prevWeek").addEventListener("click", () => changeWeek(-7));
 document.getElementById("nextWeek").addEventListener("click", () => changeWeek(7));
+document.getElementById("closeReportModal").addEventListener("click", closeReportModal);
+document.getElementById("downloadReport").addEventListener("click", downloadActiveReport);
+document.getElementById("editReportFromModal").addEventListener("click", editActiveReportFromModal);
+document.getElementById("reportModal").addEventListener("click", (event) => {
+  if (event.target.id === "reportModal") closeReportModal();
+});
 
 document.getElementById("scriptUrl").value = settings.scriptUrl || "";
 document.getElementById("settingsForm").addEventListener("submit", (event) => {
@@ -425,7 +432,8 @@ function renderPlanningCalendar() {
     column.innerHTML = `
       <div class="day-head">
         <strong>${new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(day)}</strong>
-        <span>${formatDate(dateKey)}</span>
+        <span class="day-number">${new Intl.DateTimeFormat("tr-TR", { day: "2-digit" }).format(day)}</span>
+        <span>${new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(day)}</span>
       </div>
     `;
     if (!dayPlans.length) {
@@ -542,31 +550,18 @@ function itemCard({ title, meta, body, foot, badge, collection, id }) {
 }
 
 function reportCard(report) {
-  const card = document.createElement("details");
-  card.className = "item";
-  const crews = getReportCrews(report);
-  const crewHtml = crews.length
-    ? crews.map((crew) => `
-        <div class="item-section">
-          <strong>${escapeHtml(crew.name || "Ekip")}</strong>
-          <p>${escapeHtml(crew.text || "Not girilmedi")}</p>
-        </div>
-      `).join("")
-    : `<p>${escapeHtml(report.work || "Rapor detayı yok")}</p>`;
-
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "report-summary";
+  card.dataset.openReport = report.id;
   card.innerHTML = `
-    <summary class="item-top">
+    <div class="item-top">
       <div>
-        <strong>${escapeHtml(report.site)} - ${formatDate(report.date)}</strong>
-        <p>${escapeHtml(report.crew || "Ekip bilgisi yok")}</p>
+        <strong>${escapeHtml(report.site)}</strong>
+        <p>${formatDate(report.date)}</p>
       </div>
-      <div class="item-actions">
-        <button class="tiny-button" title="Düzenle" data-edit-report="${report.id}">✎</button>
-        <button class="tiny-button" title="Sil" data-delete="reports" data-id="${report.id}">x</button>
-      </div>
-    </summary>
-    ${crewHtml}
-    ${report.note ? `<p>${escapeHtml(report.note)}</p>` : ""}
+      <span class="badge">Detay</span>
+    </div>
   `;
   return card;
 }
@@ -609,6 +604,12 @@ function renderEmpty(target, text) {
 }
 
 document.addEventListener("click", (event) => {
+  const reportButton = event.target.closest("[data-open-report]");
+  if (reportButton) {
+    openReportModal(reportButton.dataset.openReport);
+    return;
+  }
+
   const editReportButton = event.target.closest("[data-edit-report]");
   if (editReportButton) {
     event.preventDefault();
@@ -644,6 +645,7 @@ document.addEventListener("click", (event) => {
 });
 
 function editReport(id) {
+  closeReportModal();
   const report = state.reports.find((item) => item.id === id);
   if (!report) return;
   editingReportId = id;
@@ -655,6 +657,63 @@ function editReport(id) {
   resetCrewRows("crewBuilder", getReportCrews(report));
   updateReportFormMode();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function openReportModal(id) {
+  const report = state.reports.find((item) => item.id === id);
+  if (!report) return;
+  activeReportModalId = id;
+  document.getElementById("reportModalTitle").textContent = report.site;
+  document.getElementById("reportModalMeta").textContent = formatDate(report.date);
+  document.getElementById("reportModalBody").innerHTML = reportDetailHtml(report);
+  document.getElementById("reportModal").hidden = false;
+}
+
+function closeReportModal() {
+  activeReportModalId = "";
+  document.getElementById("reportModal").hidden = true;
+}
+
+function editActiveReportFromModal() {
+  if (!activeReportModalId) return;
+  editReport(activeReportModalId);
+}
+
+function downloadActiveReport() {
+  const report = state.reports.find((item) => item.id === activeReportModalId);
+  if (!report) return;
+  const filename = `${slugify(report.site)}-${report.date}-gunluk-rapor.txt`;
+  downloadFile(filename, reportText(report), "text/plain;charset=utf-8");
+}
+
+function reportDetailHtml(report) {
+  const crews = getReportCrews(report);
+  const crewHtml = crews.length
+    ? crews.map((crew) => `
+        <div class="item-section">
+          <strong>${escapeHtml(crew.name || "Ekip")}</strong>
+          <p>${escapeHtml(crew.text || "Not girilmedi")}</p>
+        </div>
+      `).join("")
+    : `<p>${escapeHtml(report.work || "Rapor detayı yok")}</p>`;
+
+  return `
+    ${crewHtml}
+    ${report.note ? `<div class="item-section"><strong>Risk / olay / not</strong><p>${escapeHtml(report.note)}</p></div>` : ""}
+  `;
+}
+
+function reportText(report) {
+  const crews = getReportCrews(report)
+    .map((crew) => `${crew.name || "Ekip"}\n${crew.text || "Not girilmedi"}`)
+    .join("\n\n");
+  return [
+    `Şantiye: ${report.site}`,
+    `Tarih: ${formatDate(report.date)}`,
+    "",
+    crews || report.work || "Rapor detayı yok",
+    report.note ? `\nNot: ${report.note}` : ""
+  ].join("\n");
 }
 
 function cancelReportEdit() {
@@ -1017,6 +1076,19 @@ function downloadFile(filename, content, type) {
 
 function csvCell(value = "") {
   return `"${String(value).replaceAll('"', '""')}"`;
+}
+
+function slugify(value = "") {
+  return String(value)
+    .toLowerCase()
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ı", "i")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "rapor";
 }
 
 function formatDate(value) {
