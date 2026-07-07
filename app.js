@@ -5,6 +5,7 @@ const spreadsheetId = "1xfp9vUbdJpq39P1fZgYVb5rHqGr5b9HPKfujuai4YaM";
 const initialState = {
   sites: [],
   reports: [],
+  plans: [],
   orders: [],
   issues: []
 };
@@ -14,11 +15,14 @@ let settings = loadSettings();
 let syncTimer = null;
 let isSyncing = false;
 let activeSiteId = state.sites[0]?.id || "";
+let editingReportId = "";
+let activeWeekStart = getWeekStart(today);
 
 const views = {
   overview: "Genel Bakış",
   sites: "Şantiyeler",
   reports: "Günlük Rapor",
+  planning: "Planlama",
   orders: "Siparişler",
   issues: "Sorunlar",
   sheets: "Sheets Bağlantısı"
@@ -42,6 +46,10 @@ document.getElementById("exportJson").addEventListener("click", exportJson);
 document.getElementById("clearData").addEventListener("click", clearAllData);
 document.getElementById("exportReports").addEventListener("click", exportReportsCsv);
 document.getElementById("addCrewRow").addEventListener("click", () => addCrewRow());
+document.getElementById("cancelReportEdit").addEventListener("click", cancelReportEdit);
+document.getElementById("addPlanCrewRow").addEventListener("click", () => addCrewRow("planCrewBuilder"));
+document.getElementById("prevWeek").addEventListener("click", () => changeWeek(-7));
+document.getElementById("nextWeek").addEventListener("click", () => changeWeek(7));
 
 document.getElementById("scriptUrl").value = settings.scriptUrl || "";
 document.getElementById("settingsForm").addEventListener("submit", (event) => {
@@ -61,6 +69,7 @@ bindForm("siteForm", "sites", "push", (data) => ({
 }));
 
 bindReportForm();
+bindPlanForm();
 
 bindForm("orderForm", "orders", "unshift", (data) => ({
     id: crypto.randomUUID(),
@@ -113,7 +122,7 @@ function bindReportForm() {
     }
 
     const item = {
-      id: crypto.randomUUID(),
+      id: editingReportId || crypto.randomUUID(),
       date: data.date,
       site: data.site,
       crews,
@@ -123,15 +132,61 @@ function bindReportForm() {
       note: data.note
     };
 
-    state.reports.unshift(item);
+    if (editingReportId) {
+      state.reports = state.reports.map((report) => report.id === editingReportId ? item : report);
+    } else {
+      state.reports.unshift(item);
+    }
     saveState();
     form.reset();
     form.querySelectorAll('input[type="date"]').forEach((input) => {
       input.value = today;
     });
     resetCrewRows();
+    const wasEditing = Boolean(editingReportId);
+    editingReportId = "";
+    updateReportFormMode();
     render();
-    appendRecordToSheets("reports", item);
+    if (wasEditing) {
+      upsertRecordToSheets("reports", item);
+    } else {
+      appendRecordToSheets("reports", item);
+    }
+  });
+}
+
+function bindPlanForm() {
+  const form = document.getElementById("planForm");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const crews = collectCrewRows("planCrewBuilder");
+    if (!crews.length) {
+      alert("En az bir ekip adı veya planlama notu girmen gerekiyor.");
+      return;
+    }
+
+    const item = {
+      id: crypto.randomUUID(),
+      date: data.date,
+      site: data.site,
+      title: data.title,
+      crews,
+      crew: crews.map((crew) => crew.name).filter(Boolean).join(", "),
+      detail: crews.map((crew) => `${crew.name || "Ekip"}: ${crew.text}`).join(" | "),
+      note: data.note
+    };
+
+    state.plans.unshift(item);
+    saveState();
+    form.reset();
+    form.querySelectorAll('input[type="date"]').forEach((input) => {
+      input.value = today;
+    });
+    resetCrewRows("planCrewBuilder");
+    activeWeekStart = getWeekStart(item.date);
+    render();
+    appendRecordToSheets("plans", item);
   });
 }
 
@@ -181,6 +236,7 @@ function render() {
   renderMetrics();
   renderSites();
   renderReports();
+  renderPlans();
   renderOrders();
   renderIssues();
   renderOverview();
@@ -252,6 +308,7 @@ function renderSiteDetail() {
   if (!site) return;
 
   const reports = state.reports.filter((report) => report.site === site.name);
+  const plans = state.plans.filter((plan) => plan.site === site.name);
   const orders = state.orders.filter((order) => order.site === site.name);
   const issues = state.issues.filter((issue) => issue.site === site.name);
 
@@ -262,13 +319,17 @@ function renderSiteDetail() {
           <h2>${escapeHtml(site.name)}</h2>
           <p class="helper-text">${escapeHtml(site.location || "Konum girilmedi")} / ${escapeHtml(site.status || "Durum yok")}</p>
         </div>
-        <span class="badge">${reports.length} rapor / ${orders.length} sipariş / ${issues.length} sorun</span>
+        <span class="badge">${reports.length} rapor / ${plans.length} plan / ${orders.length} sipariş / ${issues.length} sorun</span>
       </div>
     </section>
     <div class="site-detail-grid">
       <section class="panel">
         <div class="panel-header"><h2>Günlük Raporlar</h2><span>${reports.length} kayıt</span></div>
         <div class="list" id="siteReports"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-header"><h2>Planlamalar</h2><span>${plans.length} kayıt</span></div>
+        <div class="list" id="sitePlans"></div>
       </section>
       <section class="panel">
         <div class="panel-header"><h2>Siparişler</h2><span>${orders.length} kayıt</span></div>
@@ -282,11 +343,15 @@ function renderSiteDetail() {
   `;
 
   const reportList = document.getElementById("siteReports");
+  const planList = document.getElementById("sitePlans");
   const orderList = document.getElementById("siteOrders");
   const issueList = document.getElementById("siteIssues");
 
   if (!reports.length) renderEmpty(reportList, "Bu şantiye için rapor yok.");
   reports.forEach((report) => reportList.append(reportCard(report)));
+
+  if (!plans.length) renderEmpty(planList, "Bu şantiye için planlama yok.");
+  plans.forEach((plan) => planList.append(planCard(plan)));
 
   if (!orders.length) renderEmpty(orderList, "Bu şantiye için sipariş yok.");
   orders.forEach((order) => {
@@ -319,6 +384,54 @@ function renderReports() {
   if (!state.reports.length) return renderEmpty(list, "Henüz günlük rapor yok.");
   state.reports.forEach((report) => {
     list.append(reportCard(report));
+  });
+}
+
+function renderPlans() {
+  renderPlanningCalendar();
+  const list = document.getElementById("planList");
+  if (!list) return;
+  list.innerHTML = "";
+  document.getElementById("planCount").textContent = `${state.plans.length} kayıt`;
+  if (!state.plans.length) return renderEmpty(list, "Henüz planlama yok.");
+  state.plans.forEach((plan) => {
+    list.append(planCard(plan));
+  });
+}
+
+function renderPlanningCalendar() {
+  const calendar = document.getElementById("weekCalendar");
+  if (!calendar) return;
+  calendar.innerHTML = "";
+  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(activeWeekStart, index));
+  document.getElementById("weekLabel").textContent = `${formatDate(weekDays[0])} - ${formatDate(weekDays[6])}`;
+
+  weekDays.forEach((day) => {
+    const dateKey = toDateKey(day);
+    const dayPlans = state.plans.filter((plan) => plan.date === dateKey);
+    const column = document.createElement("section");
+    column.className = `day-column ${dateKey === today ? "today" : ""}`;
+    column.innerHTML = `
+      <div class="day-head">
+        <strong>${new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(day)}</strong>
+        <span>${formatDate(dateKey)}</span>
+      </div>
+    `;
+    if (!dayPlans.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "Plan yok";
+      column.append(empty);
+    }
+    dayPlans.forEach((plan) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "plan-chip";
+      chip.dataset.openPlan = plan.id;
+      chip.textContent = plan.title || plan.crew || "Plan";
+      column.append(chip);
+    });
+    calendar.append(column);
   });
 }
 
@@ -364,13 +477,7 @@ function renderOverview() {
 
   [...todayReports, ...pendingOrders].forEach((entry) => {
     if (entry.work) {
-      todayList.append(itemCard({
-        title: entry.site,
-        meta: "Bugünkü rapor",
-        body: entry.work,
-        collection: "reports",
-        id: entry.id
-      }));
+      todayList.append(reportCard(entry));
     } else {
       todayList.append(itemCard({
         title: entry.detail,
@@ -424,7 +531,7 @@ function itemCard({ title, meta, body, foot, badge, collection, id }) {
 }
 
 function reportCard(report) {
-  const card = document.createElement("article");
+  const card = document.createElement("details");
   card.className = "item";
   const crews = getReportCrews(report);
   const crewHtml = crews.length
@@ -437,17 +544,48 @@ function reportCard(report) {
     : `<p>${escapeHtml(report.work || "Rapor detayı yok")}</p>`;
 
   card.innerHTML = `
-    <div class="item-top">
+    <summary class="item-top">
       <div>
         <strong>${escapeHtml(report.site)} - ${formatDate(report.date)}</strong>
         <p>${escapeHtml(report.crew || "Ekip bilgisi yok")}</p>
       </div>
       <div class="item-actions">
+        <button class="tiny-button" title="Düzenle" data-edit-report="${report.id}">✎</button>
         <button class="tiny-button" title="Sil" data-delete="reports" data-id="${report.id}">x</button>
       </div>
-    </div>
+    </summary>
     ${crewHtml}
     ${report.note ? `<p>${escapeHtml(report.note)}</p>` : ""}
+  `;
+  return card;
+}
+
+function planCard(plan) {
+  const card = document.createElement("details");
+  card.className = "item";
+  card.dataset.planCard = plan.id;
+  const crews = getReportCrews(plan);
+  const crewHtml = crews.length
+    ? crews.map((crew) => `
+        <div class="item-section">
+          <strong>${escapeHtml(crew.name || "Ekip")}</strong>
+          <p>${escapeHtml(crew.text || "Plan girilmedi")}</p>
+        </div>
+      `).join("")
+    : `<p>${escapeHtml(plan.detail || "Plan detayı yok")}</p>`;
+
+  card.innerHTML = `
+    <summary class="item-top">
+      <div>
+        <strong>${escapeHtml(plan.title || "Plan")} - ${formatDate(plan.date)}</strong>
+        <p>${escapeHtml(plan.site)} / ${escapeHtml(plan.crew || "Ekip bilgisi yok")}</p>
+      </div>
+      <div class="item-actions">
+        <button class="tiny-button" title="Sil" data-delete="plans" data-id="${plan.id}">x</button>
+      </div>
+    </summary>
+    ${crewHtml}
+    ${plan.note ? `<p>${escapeHtml(plan.note)}</p>` : ""}
   `;
   return card;
 }
@@ -460,6 +598,20 @@ function renderEmpty(target, text) {
 }
 
 document.addEventListener("click", (event) => {
+  const editReportButton = event.target.closest("[data-edit-report]");
+  if (editReportButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    editReport(editReportButton.dataset.editReport);
+    return;
+  }
+
+  const planButton = event.target.closest("[data-open-plan]");
+  if (planButton) {
+    openPlanDetails(planButton.dataset.openPlan);
+    return;
+  }
+
   const siteButton = event.target.closest("[data-open-site]");
   if (siteButton) {
     activeSiteId = siteButton.dataset.openSite;
@@ -471,12 +623,56 @@ document.addEventListener("click", (event) => {
 
   const button = event.target.closest("[data-delete]");
   if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
   const collection = button.dataset.delete;
   state[collection] = state[collection].filter((item) => item.id !== button.dataset.id);
   saveState();
   render();
   scheduleAutoSync();
 });
+
+function editReport(id) {
+  const report = state.reports.find((item) => item.id === id);
+  if (!report) return;
+  editingReportId = id;
+  switchView("reports");
+  const form = document.getElementById("reportForm");
+  form.elements.date.value = report.date;
+  form.elements.site.value = report.site;
+  form.elements.note.value = report.note || "";
+  resetCrewRows("crewBuilder", getReportCrews(report));
+  updateReportFormMode();
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function cancelReportEdit() {
+  editingReportId = "";
+  const form = document.getElementById("reportForm");
+  form.reset();
+  form.querySelectorAll('input[type="date"]').forEach((input) => {
+    input.value = today;
+  });
+  resetCrewRows("crewBuilder");
+  updateReportFormMode();
+}
+
+function updateReportFormMode() {
+  document.getElementById("reportFormTitle").textContent = editingReportId ? "Günlük Raporu Düzenle" : "Günlük Rapor Gir";
+  document.getElementById("cancelReportEdit").hidden = !editingReportId;
+}
+
+function openPlanDetails(id) {
+  const detail = document.querySelector(`[data-plan-card="${CSS.escape(id)}"]`);
+  if (!detail) return;
+  detail.open = true;
+  detail.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function changeWeek(offset) {
+  activeWeekStart = addDays(activeWeekStart, offset);
+  renderPlans();
+}
 
 function seedExampleData() {
   if (state.sites.length || state.reports.length || state.orders.length || state.issues.length) return;
@@ -622,6 +818,19 @@ function appendSheetsRecord(collection, item) {
   beacon.src = url.toString();
 }
 
+function upsertRecordToSheets(collection, item) {
+  if (!settings.scriptUrl) return;
+  const url = new URL(settings.scriptUrl);
+  url.searchParams.set("action", "upsert");
+  url.searchParams.set("spreadsheetId", spreadsheetId);
+  url.searchParams.set("collection", collection);
+  url.searchParams.set("item", JSON.stringify(item));
+
+  const beacon = new Image();
+  beacon.referrerPolicy = "no-referrer";
+  beacon.src = url.toString();
+}
+
 function loadSheetsData() {
   return callSheetsJsonp("load");
 }
@@ -743,8 +952,8 @@ function setSyncStatus(message) {
   document.getElementById("syncStatus").textContent = message;
 }
 
-function addCrewRow(name = "", text = "") {
-  const builder = document.getElementById("crewBuilder");
+function addCrewRow(builderId = "crewBuilder", name = "", text = "") {
+  const builder = document.getElementById(builderId);
   const row = document.createElement("div");
   row.className = "crew-row";
   row.innerHTML = `
@@ -756,21 +965,22 @@ function addCrewRow(name = "", text = "") {
     <label>Ekip notu<textarea name="crewText" rows="4" placeholder="Bu ekibin yaptığı işler">${escapeHtml(text)}</textarea></label>
   `;
   row.querySelector("button").addEventListener("click", () => {
-    if (document.querySelectorAll("#crewBuilder .crew-row").length > 1) {
+    if (builder.querySelectorAll(".crew-row").length > 1) {
       row.remove();
     }
   });
   builder.append(row);
 }
 
-function resetCrewRows() {
-  const builder = document.getElementById("crewBuilder");
+function resetCrewRows(builderId = "crewBuilder", crews = [{ name: "", text: "" }]) {
+  const builder = document.getElementById(builderId);
   builder.innerHTML = "";
-  addCrewRow();
+  const rows = crews.length ? crews : [{ name: "", text: "" }];
+  rows.forEach((crew) => addCrewRow(builderId, crew.name, crew.text));
 }
 
-function collectCrewRows() {
-  return [...document.querySelectorAll("#crewBuilder .crew-row")]
+function collectCrewRows(builderId = "crewBuilder") {
+  return [...document.querySelectorAll(`#${builderId} .crew-row`)]
     .map((row) => ({
       name: row.querySelector('[name="crewName"]')?.value.trim() || "",
       text: row.querySelector('[name="crewText"]')?.value.trim() || ""
@@ -780,8 +990,8 @@ function collectCrewRows() {
 
 function getReportCrews(report) {
   if (Array.isArray(report.crews)) return report.crews;
-  if (!report.crew && !report.work) return [];
-  return [{ name: report.crew || "Ekip", text: report.work || "" }];
+  if (!report.crew && !report.work && !report.detail) return [];
+  return [{ name: report.crew || "Ekip", text: report.work || report.detail || "" }];
 }
 
 function downloadFile(filename, content, type) {
@@ -804,6 +1014,24 @@ function formatDate(value) {
 
 function formatTime(value) {
   return new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" }).format(value);
+}
+
+function toDateKey(value) {
+  const date = value instanceof Date ? value : new Date(`${value}T12:00:00`);
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(value, amount) {
+  const date = value instanceof Date ? new Date(value) : new Date(`${value}T12:00:00`);
+  date.setDate(date.getDate() + amount);
+  return date;
+}
+
+function getWeekStart(value) {
+  const date = value instanceof Date ? new Date(value) : new Date(`${value}T12:00:00`);
+  const day = date.getDay() || 7;
+  date.setDate(date.getDate() - day + 1);
+  return date;
 }
 
 function priorityScore(priority) {

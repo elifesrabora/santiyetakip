@@ -317,7 +317,7 @@ button {
 
 .site-detail-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -379,6 +379,19 @@ textarea {
   background: #fff;
 }
 
+.item summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.item summary::-webkit-details-marker {
+  display: none;
+}
+
+.item[open] {
+  border-color: rgba(23, 107, 82, 0.35);
+}
+
 .item-top {
   display: flex;
   align-items: start;
@@ -408,6 +421,66 @@ textarea {
 .item-actions {
   display: flex;
   gap: 8px;
+}
+
+.week-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+  padding: 10px 0 16px;
+}
+
+.day-column {
+  min-height: 210px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--surface-2);
+}
+
+.day-column.today {
+  border-color: var(--accent);
+  background: #f6fbf8;
+}
+
+.day-head {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.day-head strong {
+  font-size: 0.9rem;
+}
+
+.day-head span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.plan-chip {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  margin-bottom: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+  font-size: 0.84rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.plan-chip:hover {
+  border-color: var(--accent);
+}
+
+.plan-list-header {
+  margin-top: 10px;
 }
 
 .tiny-button {

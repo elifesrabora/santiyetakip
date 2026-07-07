@@ -21,6 +21,7 @@
           <button class="nav-button active" data-view="overview">Genel Bakış</button>
           <button class="nav-button" data-view="sites">Şantiyeler</button>
           <button class="nav-button" data-view="reports">Günlük Rapor</button>
+          <button class="nav-button" data-view="planning">Planlama</button>
           <button class="nav-button" data-view="orders">Siparişler</button>
           <button class="nav-button" data-view="issues">Sorunlar</button>
           <button class="nav-button" data-view="sheets">Sheets</button>
@@ -120,7 +121,7 @@
         <section class="view" id="reports">
           <div class="work-grid">
             <form class="panel form-panel" id="reportForm">
-              <h2>Günlük Rapor Gir</h2>
+              <h2 id="reportFormTitle">Günlük Rapor Gir</h2>
               <label>Tarih<input name="date" type="date" required /></label>
               <label>Şantiye<select name="site" required></select></label>
               <div class="crew-builder" id="crewBuilder">
@@ -131,7 +132,10 @@
               </div>
               <button class="ghost-button" id="addCrewRow" type="button">Ekip Ekle</button>
               <label>Risk / olay / not<textarea name="note" rows="3"></textarea></label>
-              <button class="primary-button" type="submit">Raporu Kaydet</button>
+              <div class="button-row">
+                <button class="primary-button" type="submit">Raporu Kaydet</button>
+                <button class="ghost-button" id="cancelReportEdit" type="button" hidden>Vazgeç</button>
+              </div>
             </form>
             <section class="panel">
               <div class="panel-header">
@@ -139,6 +143,42 @@
                 <button class="ghost-button" id="exportReports">CSV</button>
               </div>
               <div class="list" id="reportList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="planning">
+          <div class="work-grid">
+            <form class="panel form-panel" id="planForm">
+              <h2>Planlama Gir</h2>
+              <label>Tarih<input name="date" type="date" required /></label>
+              <label>Şantiye<select name="site" required></select></label>
+              <label>Başlık<input name="title" required placeholder="Örn. 3. kat beton hazırlığı" /></label>
+              <div class="crew-builder" id="planCrewBuilder">
+                <div class="crew-row">
+                  <label>Ekip adı<input name="crewName" placeholder="Örn. Kalıp ekibi" /></label>
+                  <label>Planlama notu<textarea name="crewText" rows="4" placeholder="Bu ekibin planlanan işleri"></textarea></label>
+                </div>
+              </div>
+              <button class="ghost-button" id="addPlanCrewRow" type="button">Ekip Ekle</button>
+              <label>Genel not<textarea name="note" rows="3"></textarea></label>
+              <button class="primary-button" type="submit">Planı Kaydet</button>
+            </form>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Haftalık Plan</h2>
+                <div class="button-row">
+                  <button class="ghost-button" id="prevWeek" type="button">Önceki</button>
+                  <button class="ghost-button" id="nextWeek" type="button">Sonraki</button>
+                </div>
+              </div>
+              <p class="helper-text" id="weekLabel"></p>
+              <div class="week-calendar" id="weekCalendar"></div>
+              <div class="panel-header plan-list-header">
+                <h2>Plan Detayları</h2>
+                <span id="planCount">0 kayıt</span>
+              </div>
+              <div class="list" id="planList"></div>
             </section>
           </div>
         </section>
@@ -234,6 +274,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=20260707-site-tabs-reports"></script>
+    <script src="app.js?v=20260707-planning-edit-reports"></script>
   </body>
 </html>

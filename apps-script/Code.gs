@@ -9,6 +9,10 @@ const TABLES = {
     sheetName: "Gunluk Raporlar",
     headers: ["id", "date", "site", "work", "crew", "plan", "note"]
   },
+  plans: {
+    sheetName: "Planlamalar",
+    headers: ["id", "date", "site", "title", "crew", "detail", "note"]
+  },
   orders: {
     sheetName: "Siparisler",
     headers: ["id", "date", "site", "type", "detail", "amount", "status"]
@@ -34,6 +38,12 @@ function doPost(event) {
         sheetName: result.sheetName,
         rowNumber: result.rowNumber
       });
+    }
+
+    if (payload.action === "upsert") {
+      const item = typeof payload.item === "string" ? JSON.parse(payload.item) : payload.item || {};
+      const result = upsertData(spreadsheet, payload.collection, item);
+      return jsonResponse({ ok: true, sheetName: result.sheetName, rowNumber: result.rowNumber });
     }
 
     if (payload.action === "save") {
@@ -91,6 +101,12 @@ function doGet(event) {
       return response({ ok: true, sheetName: result.sheetName, rowNumber: result.rowNumber }, params.callback);
     }
 
+    if (params.action === "upsert") {
+      const item = params.item ? JSON.parse(params.item) : {};
+      const result = upsertData(spreadsheet, params.collection, item);
+      return response({ ok: true, sheetName: result.sheetName, rowNumber: result.rowNumber }, params.callback);
+    }
+
     return response({ ok: true, data: loadData(spreadsheet) }, params.callback);
   } catch (error) {
     const callback = event && event.parameter ? event.parameter.callback : "";
@@ -144,6 +160,36 @@ function appendData(spreadsheet, collection, item) {
     sheetName: table.sheetName,
     rowNumber: sheet.getLastRow()
   };
+}
+
+function upsertData(spreadsheet, collection, item) {
+  const table = TABLES[collection];
+  if (!table) throw new Error("Bilinmeyen tablo: " + collection);
+
+  const sheet = spreadsheet.getSheetByName(table.sheetName);
+  if (!sheet) throw new Error("Sayfa bulunamadı: " + table.sheetName);
+
+  const values = table.headers.map((header) => item[header] || "");
+  const rowNumber = findRowById(sheet, item.id);
+  if (rowNumber) {
+    sheet.getRange(rowNumber, 1, 1, table.headers.length).setValues([values]);
+    return { sheetName: table.sheetName, rowNumber: rowNumber };
+  }
+
+  sheet.appendRow(values);
+  return {
+    sheetName: table.sheetName,
+    rowNumber: sheet.getLastRow()
+  };
+}
+
+function findRowById(sheet, id) {
+  if (!id || sheet.getLastRow() < 2) return 0;
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  for (let index = 0; index < values.length; index++) {
+    if (String(values[index][0]) === String(id)) return index + 2;
+  }
+  return 0;
 }
 
 function loadData(spreadsheet) {
