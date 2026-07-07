@@ -7,6 +7,12 @@ const initialState = {
   reports: [],
   plans: [],
   prePlans: [],
+  concreteProgress: {
+    projectName: "",
+    progressNo: "",
+    date: "",
+    rows: []
+  },
   orders: [],
   issues: []
 };
@@ -74,6 +80,12 @@ document.querySelectorAll("[data-order-panel]").forEach((button) => {
 });
 document.getElementById("prevWeek").addEventListener("click", () => changeWeek(-7));
 document.getElementById("nextWeek").addEventListener("click", () => changeWeek(7));
+document.getElementById("addConcreteProgressRow").addEventListener("click", addConcreteProgressRow);
+document.getElementById("concreteProgressRows").addEventListener("input", handleConcreteProgressInput);
+document.getElementById("concreteProgressRows").addEventListener("click", handleConcreteProgressClick);
+document.querySelectorAll("#concreteProgressModule [id^='progress']").forEach((input) => {
+  input.addEventListener("input", handleConcreteProgressMetaInput);
+});
 document.getElementById("closeReportModal").addEventListener("click", closeReportModal);
 document.getElementById("downloadReport").addEventListener("click", downloadActiveReport);
 document.getElementById("editReportFromModal").addEventListener("click", editActiveReportFromModal);
@@ -385,8 +397,34 @@ function normalizeState(value) {
     reports: Array.isArray(value.reports) ? value.reports : [],
     plans: Array.isArray(value.plans) ? value.plans : [],
     prePlans: Array.isArray(value.prePlans) ? value.prePlans : [],
+    concreteProgress: normalizeConcreteProgress(value.concreteProgress),
     orders: Array.isArray(value.orders) ? value.orders : [],
     issues: Array.isArray(value.issues) ? value.issues : []
+  };
+}
+
+function normalizeConcreteProgress(value = {}) {
+  return {
+    projectName: value.projectName || "",
+    progressNo: value.progressNo || "",
+    date: value.date || "",
+    rows: Array.isArray(value.rows) ? value.rows.map(normalizeConcreteProgressRow) : []
+  };
+}
+
+function normalizeConcreteProgressRow(row = {}) {
+  return {
+    id: row.id || crypto.randomUUID(),
+    element: row.element || "Kolon",
+    floor: row.floor || "",
+    concreteClass: row.concreteClass || "C30",
+    count: row.count || "",
+    width: row.width || "",
+    length: row.length || "",
+    height: row.height || "",
+    deduction: row.deduction || "",
+    previous: row.previous || "",
+    unitPrice: row.unitPrice || ""
   };
 }
 
@@ -423,6 +461,7 @@ function render() {
   renderIssues();
   renderOverview();
   renderMaterialSummary();
+  renderConcreteProgress();
   renderSiteDetail();
 }
 
@@ -810,6 +849,153 @@ function renderMaterialSummary() {
     `;
     target.append(card);
   });
+}
+
+function renderConcreteProgress() {
+  const progress = state.concreteProgress;
+  document.getElementById("progressProjectName").value = progress.projectName || "";
+  document.getElementById("progressNo").value = progress.progressNo || "";
+  document.getElementById("progressDate").value = progress.date || today;
+
+  const tbody = document.getElementById("concreteProgressRows");
+  tbody.innerHTML = "";
+  const rows = progress.rows.length ? progress.rows : [createConcreteProgressRow()];
+  if (!progress.rows.length) {
+    state.concreteProgress.rows = rows;
+    saveState();
+  }
+  rows.forEach((row) => tbody.append(concreteProgressRowElement(row)));
+  renderConcreteProgressTotals();
+}
+
+function concreteProgressRowElement(row) {
+  const tr = document.createElement("tr");
+  tr.dataset.progressRow = row.id;
+  tr.innerHTML = `
+    <td>${selectHtml("element", ["Kolon", "Kiriş", "Döşeme", "Temel/Radye", "Perde", "Merdiven", "Diğer"], row.element)}</td>
+    <td><input data-progress-field="floor" value="${escapeHtml(row.floor)}" /></td>
+    <td>${selectHtml("concreteClass", ["C25", "C30", "C35", "C40"], row.concreteClass)}</td>
+    <td><input data-progress-field="count" type="number" min="0" step="1" value="${escapeHtml(row.count)}" /></td>
+    <td><input data-progress-field="width" type="number" min="0" step="0.01" value="${escapeHtml(row.width)}" /></td>
+    <td><input data-progress-field="length" type="number" min="0" step="0.01" value="${escapeHtml(row.length)}" /></td>
+    <td><input data-progress-field="height" type="number" min="0" step="0.01" value="${escapeHtml(row.height)}" /></td>
+    <td><input class="calculated-input" data-progress-calc="gross" readonly /></td>
+    <td><input data-progress-field="deduction" type="number" min="0" step="0.01" value="${escapeHtml(row.deduction)}" /></td>
+    <td><input class="calculated-input" data-progress-calc="net" readonly /></td>
+    <td><input data-progress-field="previous" type="number" min="0" step="0.01" value="${escapeHtml(row.previous)}" /></td>
+    <td><input class="calculated-input" data-progress-calc="current" readonly /></td>
+    <td><input data-progress-field="unitPrice" type="number" min="0" step="0.01" value="${escapeHtml(row.unitPrice)}" /></td>
+    <td><input class="calculated-input currency-input" data-progress-calc="amount" readonly /></td>
+    <td><button class="tiny-button" type="button" title="Satırı sil" data-delete-progress-row="${row.id}">x</button></td>
+  `;
+  updateConcreteProgressRowDisplay(tr, row);
+  return tr;
+}
+
+function selectHtml(field, options, value) {
+  return `
+    <select data-progress-field="${field}">
+      ${options.map((option) => `<option ${option === value ? "selected" : ""}>${option}</option>`).join("")}
+    </select>
+  `;
+}
+
+function createConcreteProgressRow() {
+  return normalizeConcreteProgressRow({ id: crypto.randomUUID() });
+}
+
+function handleConcreteProgressMetaInput(event) {
+  const map = {
+    progressProjectName: "projectName",
+    progressNo: "progressNo",
+    progressDate: "date"
+  };
+  const key = map[event.target.id];
+  if (!key) return;
+  state.concreteProgress[key] = event.target.value;
+  saveState();
+}
+
+function handleConcreteProgressInput(event) {
+  const field = event.target.dataset.progressField;
+  if (!field) return;
+  const tr = event.target.closest("[data-progress-row]");
+  const row = state.concreteProgress.rows.find((item) => item.id === tr.dataset.progressRow);
+  if (!row) return;
+  row[field] = event.target.value;
+  saveState();
+  updateConcreteProgressRowDisplay(tr, row);
+  renderConcreteProgressTotals();
+}
+
+function handleConcreteProgressClick(event) {
+  const button = event.target.closest("[data-delete-progress-row]");
+  if (!button) return;
+  state.concreteProgress.rows = state.concreteProgress.rows.filter((row) => row.id !== button.dataset.deleteProgressRow);
+  if (!state.concreteProgress.rows.length) state.concreteProgress.rows.push(createConcreteProgressRow());
+  saveState();
+  renderConcreteProgress();
+}
+
+function addConcreteProgressRow() {
+  state.concreteProgress.rows.push(createConcreteProgressRow());
+  saveState();
+  renderConcreteProgress();
+}
+
+function updateConcreteProgressRowDisplay(tr, row) {
+  const totals = calculateConcreteProgressRow(row);
+  tr.querySelector('[data-progress-calc="gross"]').value = formatNumber(totals.gross);
+  tr.querySelector('[data-progress-calc="net"]').value = formatNumber(totals.net);
+  tr.querySelector('[data-progress-calc="current"]').value = formatNumber(totals.current);
+  tr.querySelector('[data-progress-calc="amount"]').value = formatCurrency(totals.amount);
+}
+
+function calculateConcreteProgressRow(row) {
+  const gross = parseProgressNumber(row.count) * parseProgressNumber(row.width) * parseProgressNumber(row.length) * parseProgressNumber(row.height);
+  const net = Math.max(gross - parseProgressNumber(row.deduction), 0);
+  const current = Math.max(net - parseProgressNumber(row.previous), 0);
+  const amount = current * parseProgressNumber(row.unitPrice);
+  return { gross, net, current, amount };
+}
+
+function renderConcreteProgressTotals() {
+  const totals = state.concreteProgress.rows.reduce((acc, row) => {
+    const rowTotals = calculateConcreteProgressRow(row);
+    acc.gross += rowTotals.gross;
+    acc.net += rowTotals.net;
+    acc.current += rowTotals.current;
+    acc.amount += rowTotals.amount;
+    const classTotal = acc.byClass[row.concreteClass] || { net: 0, current: 0, amount: 0 };
+    classTotal.net += rowTotals.net;
+    classTotal.current += rowTotals.current;
+    classTotal.amount += rowTotals.amount;
+    acc.byClass[row.concreteClass] = classTotal;
+    return acc;
+  }, { gross: 0, net: 0, current: 0, amount: 0, byClass: {} });
+
+  document.getElementById("concreteProgressTotals").innerHTML = `
+    ${summaryCardHtml("Toplam brüt m³", `${formatNumber(totals.gross)} m3`)}
+    ${summaryCardHtml("Toplam net m³", `${formatNumber(totals.net)} m3`)}
+    ${summaryCardHtml("Bu hakediş toplam m³", `${formatNumber(totals.current)} m3`)}
+    ${summaryCardHtml("Genel toplam tutar", formatCurrency(totals.amount))}
+  `;
+
+  document.getElementById("concreteClassSummary").innerHTML = ["C25", "C30", "C35", "C40"].map((className) => {
+    const item = totals.byClass[className] || { net: 0, current: 0, amount: 0 };
+    return `
+      <article class="progress-class-card">
+        <strong>${className}</strong>
+        <span>Net: ${formatNumber(item.net)} m3</span>
+        <span>Bu hakediş: ${formatNumber(item.current)} m3</span>
+        <b>${formatCurrency(item.amount)}</b>
+      </article>
+    `;
+  }).join("");
+}
+
+function summaryCardHtml(label, value) {
+  return `<article class="metric progress-summary-card"><span>${label}</span><strong>${value}</strong></article>`;
 }
 
 function itemCard({ title, meta, body, foot, badge, collection, id }) {
@@ -1645,8 +1831,16 @@ function parseLocalizedNumber(value = "") {
   return match ? Number(match[0]) : 0;
 }
 
+function parseProgressNumber(value = "") {
+  return Number(String(value).replace(",", ".")) || 0;
+}
+
 function formatNumber(value) {
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(value || 0);
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(value || 0);
 }
 
 function formatWeight(valueKg) {

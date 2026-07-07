@@ -307,6 +307,95 @@ button {
   margin-bottom: 12px;
 }
 
+.progress-print-area {
+  display: grid;
+  gap: 16px;
+}
+
+.progress-meta-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) minmax(140px, 0.6fr) minmax(160px, 0.7fr);
+  gap: 12px;
+}
+
+.progress-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.progress-table {
+  min-width: 1680px;
+}
+
+.progress-table th {
+  white-space: nowrap;
+}
+
+.progress-table td {
+  min-width: 110px;
+}
+
+.progress-table td:first-child,
+.progress-table td:nth-child(3) {
+  min-width: 150px;
+}
+
+.progress-table input,
+.progress-table select {
+  min-width: 100%;
+  padding: 9px 10px;
+}
+
+.calculated-input {
+  background: var(--surface-2);
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.currency-input {
+  min-width: 135px;
+}
+
+.progress-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-summary-card strong {
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+
+.progress-class-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-class-card {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px;
+  background: var(--surface-2);
+}
+
+.progress-class-card strong {
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+.progress-class-card span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.progress-class-card b {
+  color: var(--ink);
+}
+
 .planning-layout {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
@@ -845,6 +934,9 @@ th {
   .work-grid,
   .planning-layout,
   .orders-layout,
+  .progress-meta-grid,
+  .progress-summary-grid,
+  .progress-class-summary,
   .site-detail-grid {
     grid-template-columns: 1fr;
   }

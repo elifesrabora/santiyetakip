@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Saha Defteri</title>
-    <link rel="stylesheet" href="styles.css?v=20260707-preplans" />
+    <link rel="stylesheet" href="styles.css?v=20260707-concrete-progress" />
   </head>
   <body>
     <div class="app-shell">
@@ -360,13 +360,51 @@
         </section>
 
         <section class="view" id="progress">
-          <section class="panel">
-            <div class="panel-header">
-              <h2>Hakediş</h2>
-              <span>Hazırlanıyor</span>
+          <div class="records-panel">
+            <div class="record-tabs" aria-label="Hakediş türü">
+              <button class="site-tab active" type="button">Beton</button>
             </div>
-            <p class="helper-text">Bu sekmeyi sonraki adımda birlikte hakediş metrajı, imalat kalemi, birim fiyat ve ödeme takibi için düzenleyeceğiz.</p>
-          </section>
+            <section class="panel progress-print-area" id="concreteProgressModule">
+              <div class="panel-header">
+                <h2>Beton Hakediş</h2>
+                <span>Metraj ve tutar</span>
+              </div>
+              <div class="progress-meta-grid">
+                <label>Proje adı<input id="progressProjectName" name="projectName" placeholder="Örn. Sahil Apartmanı" /></label>
+                <label>Hakediş no<input id="progressNo" name="progressNo" type="number" min="1" step="1" /></label>
+                <label>Tarih<input id="progressDate" name="progressDate" type="date" /></label>
+              </div>
+              <div class="table-wrap progress-table-wrap">
+                <table class="progress-table">
+                  <thead>
+                    <tr>
+                      <th>Eleman</th>
+                      <th>Kat</th>
+                      <th>Beton sınıfı</th>
+                      <th>Adet</th>
+                      <th>En</th>
+                      <th>Boy</th>
+                      <th>Yükseklik/Kalınlık</th>
+                      <th>Brüt m³</th>
+                      <th>Düşülen m³</th>
+                      <th>Net m³</th>
+                      <th>Önceki m³</th>
+                      <th>Bu hakediş m³</th>
+                      <th>Birim fiyat</th>
+                      <th>Tutar</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="concreteProgressRows"></tbody>
+                </table>
+              </div>
+              <div class="button-row">
+                <button class="primary-button" id="addConcreteProgressRow" type="button">Satır Ekle</button>
+              </div>
+              <section class="progress-summary-grid" id="concreteProgressTotals"></section>
+              <section class="progress-class-summary" id="concreteClassSummary"></section>
+            </section>
+          </div>
         </section>
 
         <section class="view" id="orders">
@@ -430,6 +468,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=20260707-preplans"></script>
+    <script src="app.js?v=20260707-concrete-progress"></script>
   </body>
 </html>
