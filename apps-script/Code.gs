@@ -15,7 +15,7 @@ const TABLES = {
   },
   orders: {
     sheetName: "Siparisler",
-    headers: ["id", "date", "site", "type", "detail", "amount", "status"]
+    headers: ["id", "date", "site", "type", "detail", "amount", "company", "status", "concreteClass", "volume", "unit", "pourLocation", "rebarItems", "product"]
   },
   issues: {
     sheetName: "Sorunlar",
@@ -139,7 +139,7 @@ function saveData(spreadsheet, data) {
 
     if (!rows.length) return;
 
-    const values = rows.map((row) => table.headers.map((header) => row[header] || ""));
+    const values = rows.map((row) => table.headers.map((header) => formatCellValue(row[header])));
     sheet.getRange(2, 1, values.length, table.headers.length).setValues(values);
     totalRows += values.length;
   });
@@ -153,7 +153,7 @@ function appendData(spreadsheet, collection, item) {
   const sheet = spreadsheet.getSheetByName(table.sheetName);
   if (!sheet) throw new Error("Sayfa bulunamadı: " + table.sheetName);
 
-  const values = table.headers.map((header) => item[header] || "");
+  const values = table.headers.map((header) => formatCellValue(item[header]));
   sheet.appendRow(values);
 
   return {
@@ -169,7 +169,7 @@ function upsertData(spreadsheet, collection, item) {
   const sheet = spreadsheet.getSheetByName(table.sheetName);
   if (!sheet) throw new Error("Sayfa bulunamadı: " + table.sheetName);
 
-  const values = table.headers.map((header) => item[header] || "");
+  const values = table.headers.map((header) => formatCellValue(item[header]));
   const rowNumber = findRowById(sheet, item.id);
   if (rowNumber) {
     sheet.getRange(rowNumber, 1, 1, table.headers.length).setValues([values]);
@@ -221,6 +221,12 @@ function normalizeCell(value) {
     return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
   }
   return value === null || value === undefined ? "" : String(value);
+}
+
+function formatCellValue(value) {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value) || typeof value === "object") return JSON.stringify(value);
+  return value;
 }
 
 function jsonResponse(payload) {

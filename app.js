@@ -79,16 +79,7 @@ bindForm("siteForm", "sites", "push", (data) => ({
 
 bindReportForm();
 bindPlanForm();
-
-bindForm("orderForm", "orders", "unshift", (data) => ({
-    id: crypto.randomUUID(),
-    date: data.date,
-    site: data.site,
-    type: data.type,
-    detail: data.detail,
-    amount: data.amount,
-    status: data.status
-}));
+bindOrderForms();
 
 bindForm("issueForm", "issues", "unshift", (data) => ({
     id: crypto.randomUUID(),
@@ -114,6 +105,7 @@ function bindForm(id, collection, insertMethod, buildItem) {
     form.querySelectorAll('input[type="date"]').forEach((input) => {
       input.value = today;
     });
+    if (id === "rebarOrderForm") resetRebarRows();
     render();
     appendRecordToSheets(collection, item);
   });
@@ -197,6 +189,53 @@ function bindPlanForm() {
     render();
     appendRecordToSheets("plans", item);
   });
+}
+
+function bindOrderForms() {
+  resetRebarRows();
+  document.getElementById("addRebarRow").addEventListener("click", () => addRebarRow());
+
+  bindForm("concreteOrderForm", "orders", "unshift", (data) => ({
+    id: crypto.randomUUID(),
+    date: data.date,
+    site: data.site,
+    type: "Beton",
+    concreteClass: data.concreteClass,
+    volume: data.volume,
+    unit: "m3",
+    detail: data.concreteClass,
+    amount: `${data.volume} m3`,
+    pourLocation: data.pourLocation,
+    company: data.company,
+    status: data.status
+  }));
+
+  bindForm("rebarOrderForm", "orders", "unshift", (data) => {
+    const items = collectRebarRows();
+    return {
+      id: crypto.randomUUID(),
+      date: data.date,
+      site: data.site,
+      type: "Demir",
+      company: data.company,
+      rebarItems: items,
+      detail: items.map((item) => `${item.diameter} - ${item.quantity}`).join(" | "),
+      amount: items.map((item) => item.quantity).join(" + "),
+      status: data.status
+    };
+  });
+
+  bindForm("otherOrderForm", "orders", "unshift", (data) => ({
+    id: crypto.randomUUID(),
+    date: data.date,
+    site: data.site,
+    type: "Diğer",
+    product: data.product,
+    detail: data.product,
+    amount: data.amount,
+    company: data.company,
+    status: data.status
+  }));
 }
 
 function switchView(viewId) {
@@ -372,17 +411,11 @@ function renderSiteDetail() {
   if (!plans.length) renderEmpty(planList, "Bu şantiye için planlama yok.");
   plans.forEach((plan) => planList.append(planCard(plan)));
 
-  if (!orders.length) renderEmpty(orderList, "Bu şantiye için sipariş yok.");
-  orders.forEach((order) => {
-    orderList.append(itemCard({
-      title: `${order.type}: ${order.detail}`,
-      meta: formatDate(order.date),
-      body: order.amount || "Miktar girilmedi",
-      badge: order.status,
-      collection: "orders",
-      id: order.id
-    }));
-  });
+  if (!orders.length) {
+    renderEmpty(orderList, "Bu şantiye için sipariş yok.");
+  } else {
+    renderOrderGroups(orderList, orders);
+  }
 
   if (!issues.length) renderEmpty(issueList, "Bu şantiye için sorun yok.");
   issues.forEach((issue) => {
@@ -461,17 +494,73 @@ function renderOrders() {
   document.getElementById("orderCount").textContent = `${state.orders.length} kayıt`;
   const list = document.getElementById("orderList");
   list.innerHTML = "";
-  if (!state.orders.length) return renderEmpty(list, "Henüz sipariş girilmedi.");
-  state.orders.forEach((order) => {
-    list.append(itemCard({
-      title: `${order.type}: ${order.detail}`,
-      meta: `${order.site} / ${formatDate(order.date)}`,
-      body: order.amount || "Miktar girilmedi",
-      badge: order.status,
-      collection: "orders",
-      id: order.id
-    }));
+  renderOrderGroups(list, state.orders, true);
+}
+
+function renderOrderGroups(target, orders, showSite = false) {
+  [
+    { type: "Beton", title: "Beton" },
+    { type: "Demir", title: "Demir" },
+    { type: "Diğer", title: "Diğerleri" }
+  ].forEach((group) => {
+    const groupOrders = orders.filter((order) => normalizeOrderType(order.type) === group.type);
+    const section = document.createElement("section");
+    section.className = "order-group";
+    section.innerHTML = `
+      <div class="order-group-header">
+        <h3>${group.title}</h3>
+        <span>${groupOrders.length} kayıt</span>
+      </div>
+    `;
+    const groupList = document.createElement("div");
+    groupList.className = "list";
+    if (!groupOrders.length) {
+      renderEmpty(groupList, `${group.title} siparişi yok.`);
+    } else {
+      groupOrders.forEach((order) => groupList.append(orderCard(order, showSite)));
+    }
+    section.append(groupList);
+    target.append(section);
   });
+}
+
+function orderCard(order, showSite = false) {
+  return itemCard({
+    title: `${normalizeOrderType(order.type)}: ${orderTitle(order)}`,
+    meta: showSite ? `${order.site} / ${formatDate(order.date)}` : formatDate(order.date),
+    body: orderBody(order),
+    badge: order.status,
+    collection: "orders",
+    id: order.id
+  });
+}
+
+function normalizeOrderType(type = "") {
+  if (type === "Beton") return "Beton";
+  if (type === "Demir") return "Demir";
+  return "Diğer";
+}
+
+function orderTitle(order) {
+  if (normalizeOrderType(order.type) === "Beton") return order.concreteClass || order.detail || "Beton";
+  if (normalizeOrderType(order.type) === "Demir") return order.company || "Demir siparişi";
+  return order.product || order.detail || "Diğer sipariş";
+}
+
+function orderBody(order) {
+  if (normalizeOrderType(order.type) === "Beton") {
+    return [
+      order.amount,
+      order.pourLocation ? `Dökülen yer: ${order.pourLocation}` : "",
+      order.company ? `Firma: ${order.company}` : ""
+    ].filter(Boolean).join(" / ") || "Beton bilgisi girilmedi";
+  }
+  if (normalizeOrderType(order.type) === "Demir") {
+    const items = getRebarItems(order);
+    const itemText = items.length ? items.map((item) => `${item.diameter} - ${item.quantity}`).join(" / ") : order.detail;
+    return [itemText, order.company ? `Firma: ${order.company}` : ""].filter(Boolean).join(" / ") || "Demir bilgisi girilmedi";
+  }
+  return [order.amount || "Miktar girilmedi", order.company ? `Firma: ${order.company}` : ""].filter(Boolean).join(" / ");
 }
 
 function renderIssues() {
@@ -1045,6 +1134,48 @@ function requireScriptUrl() {
 
 function setSyncStatus(message) {
   document.getElementById("syncStatus").textContent = message;
+}
+
+function addRebarRow(diameter = "", quantity = "") {
+  const builder = document.getElementById("rebarRows");
+  const row = document.createElement("div");
+  row.className = "line-row";
+  row.innerHTML = `
+    <label>Çap<input name="diameter" required placeholder="Örn. Ø12" value="${escapeHtml(diameter)}" /></label>
+    <label>Miktar<input name="quantity" required placeholder="Örn. 2 ton" value="${escapeHtml(quantity)}" /></label>
+    <button class="tiny-button" type="button" title="Satırı kaldır">x</button>
+  `;
+  row.querySelector("button").addEventListener("click", () => {
+    if (builder.querySelectorAll(".line-row").length > 1) {
+      row.remove();
+    }
+  });
+  builder.append(row);
+}
+
+function resetRebarRows(items = [{ diameter: "", quantity: "" }]) {
+  const builder = document.getElementById("rebarRows");
+  builder.innerHTML = "";
+  const rows = items.length ? items : [{ diameter: "", quantity: "" }];
+  rows.forEach((item) => addRebarRow(item.diameter, item.quantity));
+}
+
+function collectRebarRows() {
+  return [...document.querySelectorAll("#rebarRows .line-row")]
+    .map((row) => ({
+      diameter: row.querySelector('[name="diameter"]')?.value.trim() || "",
+      quantity: row.querySelector('[name="quantity"]')?.value.trim() || ""
+    }))
+    .filter((item) => item.diameter || item.quantity);
+}
+
+function getRebarItems(order) {
+  if (Array.isArray(order.rebarItems)) return order.rebarItems;
+  if (!order.detail) return [];
+  return String(order.detail).split("|").map((part) => {
+    const [diameter = "", quantity = ""] = part.split("-").map((value) => value.trim());
+    return { diameter, quantity };
+  }).filter((item) => item.diameter || item.quantity);
 }
 
 function addCrewRow(builderId = "crewBuilder", name = "", text = "") {
