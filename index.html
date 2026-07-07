@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Saha Defteri</title>
-    <link rel="stylesheet" href="styles.css?v=20260707-edit-plans-orders" />
+    <link rel="stylesheet" href="styles.css?v=20260707-records-dashboard" />
   </head>
   <body>
     <div class="app-shell">
@@ -19,6 +19,7 @@
 
         <nav class="nav" aria-label="Ana menü">
           <button class="nav-button active" data-view="overview">Genel Bakış</button>
+          <button class="nav-button" data-view="records">Kayıt</button>
           <button class="nav-button" data-view="sites">Şantiyeler</button>
           <button class="nav-button" data-view="reports">Günlük Rapor</button>
           <button class="nav-button" data-view="planning">Planlama</button>
@@ -66,6 +67,14 @@
             </article>
           </div>
 
+          <section class="panel material-panel">
+            <div class="panel-header">
+              <h2>Malzeme Özeti</h2>
+              <span>Beton / demir</span>
+            </div>
+            <div class="material-summary" id="materialSummary"></div>
+          </section>
+
           <div class="split-layout">
             <section class="panel">
               <div class="panel-header">
@@ -85,8 +94,21 @@
           </div>
         </section>
 
-        <section class="view" id="sites">
-          <div class="work-grid">
+        <section class="view" id="records">
+          <section class="records-panel">
+            <div class="panel-header">
+              <h2>Kayıt Girişi</h2>
+              <span>Tek yerden kayıt</span>
+            </div>
+            <div class="record-tabs" aria-label="Kayıt türü">
+              <button class="site-tab active" type="button" data-record-panel="siteRecord">Şantiye Kayıt</button>
+              <button class="site-tab" type="button" data-record-panel="reportRecord">Rapor Kayıt</button>
+              <button class="site-tab" type="button" data-record-panel="planRecord">Planlama Kayıt</button>
+              <button class="site-tab" type="button" data-record-panel="orderRecord">Sipariş Kayıt</button>
+              <button class="site-tab" type="button" data-record-panel="issueRecord">Sorun Kayıt</button>
+            </div>
+
+            <div class="record-panel active" id="siteRecord">
             <form class="panel form-panel" id="siteForm">
               <h2>Şantiye Ekle</h2>
               <label>Şantiye adı<input name="name" required placeholder="Örn. Merkez Blok A" /></label>
@@ -102,25 +124,9 @@
               <label>Not<textarea name="note" rows="4" placeholder="Kısa saha notu"></textarea></label>
               <button class="primary-button" type="submit">Kaydet</button>
             </form>
-            <section class="panel">
-              <div class="panel-header">
-                <h2>Şantiyeler</h2>
-                <span id="siteCount">0 kayıt</span>
-              </div>
-              <div class="site-tabs" id="siteTabs"></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Ad</th><th>Konum</th><th>Durum</th><th></th></tr></thead>
-                  <tbody id="siteTable"></tbody>
-                </table>
-              </div>
-            </section>
-          </div>
-          <section class="site-detail" id="siteDetail"></section>
-        </section>
+            </div>
 
-        <section class="view" id="reports">
-          <div class="work-grid">
+            <div class="record-panel" id="reportRecord">
             <form class="panel form-panel" id="reportForm">
               <h2 id="reportFormTitle">Günlük Rapor Gir</h2>
               <label>Tarih<input name="date" type="date" required /></label>
@@ -138,18 +144,9 @@
                 <button class="ghost-button" id="cancelReportEdit" type="button" hidden>Vazgeç</button>
               </div>
             </form>
-            <section class="panel">
-              <div class="panel-header">
-                <h2>Raporlar</h2>
-                <button class="ghost-button" id="exportReports">CSV</button>
-              </div>
-              <div class="list" id="reportList"></div>
-            </section>
-          </div>
-        </section>
+            </div>
 
-        <section class="view" id="planning">
-          <div class="planning-layout">
+            <div class="record-panel" id="planRecord">
             <form class="panel form-panel" id="planForm">
               <h2 id="planFormTitle">Planlama Gir</h2>
               <label>Tarih<input name="date" type="date" required /></label>
@@ -168,38 +165,15 @@
                 <button class="ghost-button" id="cancelPlanEdit" type="button" hidden>Vazgeç</button>
               </div>
             </form>
-            <section class="panel planning-calendar-panel">
-              <div class="panel-header">
-                <h2>Haftalık Plan</h2>
-                <div class="button-row">
-                  <button class="ghost-button" id="prevWeek" type="button">Önceki</button>
-                  <button class="ghost-button" id="nextWeek" type="button">Sonraki</button>
-                </div>
-              </div>
-              <p class="helper-text" id="weekLabel"></p>
-              <div class="week-calendar" id="weekCalendar"></div>
-              <div class="panel-header plan-list-header">
-                <h2>Plan Detayları</h2>
-                <span id="planCount">0 kayıt</span>
-              </div>
-              <div class="list" id="planList"></div>
-            </section>
-          </div>
-        </section>
-
-        <section class="view" id="progress">
-          <section class="panel">
-            <div class="panel-header">
-              <h2>Hakediş</h2>
-              <span>Hazırlanıyor</span>
             </div>
-            <p class="helper-text">Bu sekmeyi sonraki adımda birlikte hakediş metrajı, imalat kalemi, birim fiyat ve ödeme takibi için düzenleyeceğiz.</p>
-          </section>
-        </section>
 
-        <section class="view" id="orders">
-          <div class="orders-layout">
-            <div class="order-entry-stack">
+            <div class="record-panel" id="orderRecord">
+              <div class="record-tabs order-record-tabs" aria-label="Sipariş türü">
+                <button class="site-tab active" type="button" data-order-panel="concreteOrderPanel">Beton</button>
+                <button class="site-tab" type="button" data-order-panel="rebarOrderPanel">Demir</button>
+                <button class="site-tab" type="button" data-order-panel="otherOrderPanel">Diğer</button>
+              </div>
+              <div class="order-form-panel active" id="concreteOrderPanel">
               <form class="panel form-panel" id="concreteOrderForm">
                 <h2 id="concreteOrderFormTitle">Beton Siparişi</h2>
                 <label>Tarih<input name="date" type="date" required /></label>
@@ -221,6 +195,8 @@
                   <button class="ghost-button" data-cancel-order-edit type="button" hidden>Vazgeç</button>
                 </div>
               </form>
+              </div>
+              <div class="order-form-panel" id="rebarOrderPanel">
               <form class="panel form-panel" id="rebarOrderForm">
                 <h2 id="rebarOrderFormTitle">Demir Siparişi</h2>
                 <label>Tarih<input name="date" type="date" required /></label>
@@ -246,6 +222,8 @@
                   <button class="ghost-button" data-cancel-order-edit type="button" hidden>Vazgeç</button>
                 </div>
               </form>
+              </div>
+              <div class="order-form-panel" id="otherOrderPanel">
               <form class="panel form-panel" id="otherOrderForm">
                 <h2 id="otherOrderFormTitle">Diğer Siparişler</h2>
                 <label>Tarih<input name="date" type="date" required /></label>
@@ -266,19 +244,10 @@
                   <button class="ghost-button" data-cancel-order-edit type="button" hidden>Vazgeç</button>
                 </div>
               </form>
-            </div>
-            <section class="panel">
-              <div class="panel-header">
-                <h2>Siparişler</h2>
-                <span id="orderCount">0 kayıt</span>
               </div>
-              <div class="list" id="orderList"></div>
-            </section>
-          </div>
-        </section>
+            </div>
 
-        <section class="view" id="issues">
-          <div class="work-grid">
+            <div class="record-panel" id="issueRecord">
             <form class="panel form-panel" id="issueForm">
               <h2>Sorun / Eksik Ekle</h2>
               <label>Şantiye<select name="site" required></select></label>
@@ -300,6 +269,79 @@
               </label>
               <button class="primary-button" type="submit">Kaydet</button>
             </form>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="sites">
+          <div class="work-grid single-panel-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Şantiyeler</h2>
+                <span id="siteCount">0 kayıt</span>
+              </div>
+              <div class="site-tabs" id="siteTabs"></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Ad</th><th>Konum</th><th>Durum</th><th></th></tr></thead>
+                  <tbody id="siteTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+          <section class="site-detail" id="siteDetail"></section>
+        </section>
+
+        <section class="view" id="reports">
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Raporlar</h2>
+                <button class="ghost-button" id="exportReports">CSV</button>
+              </div>
+              <div class="list" id="reportList"></div>
+            </section>
+        </section>
+
+        <section class="view" id="planning">
+            <section class="panel planning-calendar-panel">
+              <div class="panel-header">
+                <h2>Haftalık Plan</h2>
+                <div class="button-row">
+                  <button class="ghost-button" id="prevWeek" type="button">Önceki</button>
+                  <button class="ghost-button" id="nextWeek" type="button">Sonraki</button>
+                </div>
+              </div>
+              <p class="helper-text" id="weekLabel"></p>
+              <div class="week-calendar" id="weekCalendar"></div>
+              <div class="panel-header plan-list-header">
+                <h2>Plan Detayları</h2>
+                <span id="planCount">0 kayıt</span>
+              </div>
+              <div class="list" id="planList"></div>
+            </section>
+        </section>
+
+        <section class="view" id="progress">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Hakediş</h2>
+              <span>Hazırlanıyor</span>
+            </div>
+            <p class="helper-text">Bu sekmeyi sonraki adımda birlikte hakediş metrajı, imalat kalemi, birim fiyat ve ödeme takibi için düzenleyeceğiz.</p>
+          </section>
+        </section>
+
+        <section class="view" id="orders">
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Siparişler</h2>
+                <span id="orderCount">0 kayıt</span>
+              </div>
+              <div class="list" id="orderList"></div>
+            </section>
+        </section>
+
+        <section class="view" id="issues">
             <section class="panel">
               <div class="panel-header">
                 <h2>Sorun Listesi</h2>
@@ -307,7 +349,6 @@
               </div>
               <div class="list" id="issueList"></div>
             </section>
-          </div>
         </section>
 
         <section class="view" id="sheets">
@@ -351,6 +392,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=20260707-edit-plans-orders"></script>
+    <script src="app.js?v=20260707-records-dashboard"></script>
   </body>
 </html>

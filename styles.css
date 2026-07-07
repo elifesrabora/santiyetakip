@@ -210,6 +210,45 @@ button {
   margin-bottom: 16px;
 }
 
+.material-panel {
+  margin-bottom: 16px;
+}
+
+.material-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.material-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px;
+  background: var(--surface-2);
+}
+
+.material-card > strong {
+  font-size: 1rem;
+}
+
+.material-card div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.material-card span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.material-card b {
+  color: var(--accent);
+}
+
 .metric,
 .panel {
   border: 1px solid var(--line);
@@ -237,6 +276,35 @@ button {
 
 .work-grid {
   grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+}
+
+.single-panel-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.records-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.record-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.record-panel,
+.order-form-panel {
+  display: none;
+}
+
+.record-panel.active,
+.order-form-panel.active {
+  display: block;
+}
+
+.order-record-tabs {
+  margin-bottom: 12px;
 }
 
 .planning-layout {

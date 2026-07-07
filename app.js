@@ -23,6 +23,7 @@ let activeReportModalId = "";
 
 const views = {
   overview: "Genel Bakış",
+  records: "Kayıt",
   sites: "Şantiyeler",
   reports: "Günlük Rapor",
   planning: "Planlama",
@@ -45,7 +46,10 @@ document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
 });
 
-document.getElementById("quickReport").addEventListener("click", () => switchView("reports"));
+document.getElementById("quickReport").addEventListener("click", () => {
+  switchView("records");
+  switchRecordPanel("reportRecord");
+});
 document.getElementById("seedData").addEventListener("click", seedExampleData);
 document.getElementById("exportJson").addEventListener("click", exportJson);
 document.getElementById("clearData").addEventListener("click", clearAllData);
@@ -56,6 +60,12 @@ document.getElementById("addPlanCrewRow").addEventListener("click", () => addCre
 document.getElementById("cancelPlanEdit").addEventListener("click", cancelPlanEdit);
 document.querySelectorAll("[data-cancel-order-edit]").forEach((button) => {
   button.addEventListener("click", cancelOrderEdit);
+});
+document.querySelectorAll("[data-record-panel]").forEach((button) => {
+  button.addEventListener("click", () => switchRecordPanel(button.dataset.recordPanel));
+});
+document.querySelectorAll("[data-order-panel]").forEach((button) => {
+  button.addEventListener("click", () => switchOrderPanel(button.dataset.orderPanel));
 });
 document.getElementById("prevWeek").addEventListener("click", () => changeWeek(-7));
 document.getElementById("nextWeek").addEventListener("click", () => changeWeek(7));
@@ -288,6 +298,24 @@ function switchView(viewId) {
   document.getElementById("pageTitle").textContent = views[viewId];
 }
 
+function switchRecordPanel(panelId) {
+  document.querySelectorAll("[data-record-panel]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.recordPanel === panelId);
+  });
+  document.querySelectorAll(".record-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === panelId);
+  });
+}
+
+function switchOrderPanel(panelId) {
+  document.querySelectorAll("[data-order-panel]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.orderPanel === panelId);
+  });
+  document.querySelectorAll(".order-form-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === panelId);
+  });
+}
+
 function loadState() {
   const saved = localStorage.getItem(storageKey);
   if (!saved) return structuredClone(initialState);
@@ -338,6 +366,7 @@ function render() {
   renderOrders();
   renderIssues();
   renderOverview();
+  renderMaterialSummary();
   renderSiteDetail();
 }
 
@@ -660,6 +689,38 @@ function renderOverview() {
   if (!priority.children.length) renderEmpty(priority, "Açık sorun yok.");
 }
 
+function renderMaterialSummary() {
+  const target = document.getElementById("materialSummary");
+  if (!target) return;
+  target.innerHTML = "";
+  if (!state.sites.length) return renderEmpty(target, "Henüz şantiye kaydı yok.");
+
+  state.sites.forEach((site) => {
+    const siteOrders = state.orders.filter((order) => order.site === site.name);
+    const concreteTotal = siteOrders
+      .filter((order) => normalizeOrderType(order.type) === "Beton")
+      .reduce((total, order) => total + parseConcreteVolume(order), 0);
+    const rebarTotalKg = siteOrders
+      .filter((order) => normalizeOrderType(order.type) === "Demir")
+      .reduce((total, order) => total + getRebarItems(order).reduce((sum, item) => sum + parseWeightKg(item.quantity), 0), 0);
+
+    const card = document.createElement("article");
+    card.className = "material-card";
+    card.innerHTML = `
+      <strong>${escapeHtml(site.name)}</strong>
+      <div>
+        <span>Beton</span>
+        <b>${formatNumber(concreteTotal)} m3</b>
+      </div>
+      <div>
+        <span>Demir</span>
+        <b>${formatWeight(rebarTotalKg)}</b>
+      </div>
+    `;
+    target.append(card);
+  });
+}
+
 function itemCard({ title, meta, body, foot, badge, collection, id }) {
   const card = document.createElement("article");
   card.className = "item";
@@ -810,7 +871,8 @@ function editReport(id) {
   const report = state.reports.find((item) => item.id === id);
   if (!report) return;
   editingReportId = id;
-  switchView("reports");
+  switchView("records");
+  switchRecordPanel("reportRecord");
   const form = document.getElementById("reportForm");
   form.elements.date.value = report.date;
   form.elements.site.value = report.site;
@@ -829,7 +891,8 @@ function editPlan(id) {
   const plan = state.plans.find((item) => item.id === id);
   if (!plan) return;
   editingPlanId = id;
-  switchView("planning");
+  switchView("records");
+  switchRecordPanel("planRecord");
   const form = document.getElementById("planForm");
   form.elements.date.value = toDateKey(plan.date);
   form.elements.site.value = plan.site;
@@ -844,9 +907,11 @@ function editOrder(id) {
   const order = state.orders.find((item) => item.id === id);
   if (!order) return;
   editingOrderId = id;
-  switchView("orders");
+  switchView("records");
+  switchRecordPanel("orderRecord");
   resetOrderForms(false);
   const type = normalizeOrderType(order.type);
+  switchOrderPanel(getOrderPanelForType(type));
   if (type === "Beton") fillConcreteOrderForm(order);
   if (type === "Demir") fillRebarOrderForm(order);
   if (type === "Diğer") fillOtherOrderForm(order);
@@ -1008,6 +1073,12 @@ function getOrderFormForType(type) {
   if (type === "Beton") return document.getElementById("concreteOrderForm");
   if (type === "Demir") return document.getElementById("rebarOrderForm");
   return document.getElementById("otherOrderForm");
+}
+
+function getOrderPanelForType(type) {
+  if (type === "Beton") return "concreteOrderPanel";
+  if (type === "Demir") return "rebarOrderPanel";
+  return "otherOrderPanel";
 }
 
 function openPlanDetails(id) {
@@ -1340,6 +1411,33 @@ function getRebarItems(order) {
     const [diameter = "", quantity = ""] = part.split("-").map((value) => value.trim());
     return { diameter, quantity };
   }).filter((item) => item.diameter || item.quantity);
+}
+
+function parseConcreteVolume(order) {
+  return parseLocalizedNumber(order.volume || order.amount || "");
+}
+
+function parseWeightKg(value = "") {
+  const text = String(value).toLowerCase();
+  const amount = parseLocalizedNumber(text);
+  if (!amount) return 0;
+  if (text.includes("ton") || text.includes("tn")) return amount * 1000;
+  if (!text.includes("kg")) return amount < 100 ? amount * 1000 : amount;
+  return amount;
+}
+
+function parseLocalizedNumber(value = "") {
+  const match = String(value).replace(",", ".").match(/-?\d+(\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(value || 0);
+}
+
+function formatWeight(valueKg) {
+  if (!valueKg) return "0 ton";
+  return `${formatNumber(valueKg / 1000)} ton`;
 }
 
 function addCrewRow(builderId = "crewBuilder", name = "", text = "") {
