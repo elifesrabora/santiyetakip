@@ -24,13 +24,14 @@ const views = {
   sites: "Şantiyeler",
   reports: "Günlük Rapor",
   planning: "Planlama",
+  progress: "Hakediş",
   orders: "Siparişler",
   issues: "Sorunlar",
   sheets: "Sheets Bağlantısı"
 };
 
 const today = new Date().toISOString().slice(0, 10);
-activeWeekStart = getWeekStart(today);
+activeWeekStart = getWeekStart(state.plans[0]?.date || today);
 
 document.querySelectorAll('input[type="date"]').forEach((input) => {
   input.value = today;
@@ -426,7 +427,7 @@ function renderPlanningCalendar() {
 
   weekDays.forEach((day) => {
     const dateKey = toDateKey(day);
-    const dayPlans = state.plans.filter((plan) => plan.date === dateKey);
+    const dayPlans = state.plans.filter((plan) => toDateKey(plan.date) === dateKey);
     const column = document.createElement("section");
     column.className = `day-column ${dateKey === today ? "today" : ""}`;
     column.innerHTML = `

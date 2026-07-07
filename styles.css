@@ -233,6 +233,17 @@ button {
   grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
 }
 
+.planning-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.planning-calendar-panel {
+  min-width: 0;
+}
+
 .panel {
   padding: 18px;
   min-width: 0;
@@ -455,20 +466,21 @@ textarea {
 
 .week-calendar {
   display: grid;
-  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  grid-template-columns: repeat(7, minmax(135px, 1fr));
   gap: 0;
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
   padding: 0;
+  min-height: 330px;
 }
 
 .day-column {
-  min-height: 260px;
+  min-height: 330px;
   border-right: 1px solid var(--line);
   border-radius: 0;
-  padding: 10px;
+  padding: 8px;
   background: #fff;
 }
 
@@ -483,9 +495,9 @@ textarea {
 .day-head {
   display: grid;
   gap: 2px;
-  min-height: 62px;
-  margin: -10px -10px 10px;
-  padding: 10px;
+  min-height: 82px;
+  margin: -8px -8px 10px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -501,19 +513,20 @@ textarea {
 
 .day-number {
   color: var(--accent);
-  font-size: 1.35rem;
+  font-size: 1.8rem;
   font-weight: 800;
+  line-height: 1;
 }
 
 .plan-chip {
   display: grid;
   gap: 2px;
   width: 100%;
-  min-height: 34px;
-  margin-bottom: 7px;
+  min-height: 42px;
+  margin-bottom: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 7px 8px;
+  padding: 8px;
   background: #fff;
   color: var(--ink);
   text-align: left;
@@ -682,6 +695,7 @@ th {
   .metrics-grid,
   .split-layout,
   .work-grid,
+  .planning-layout,
   .site-detail-grid {
     grid-template-columns: 1fr;
   }
