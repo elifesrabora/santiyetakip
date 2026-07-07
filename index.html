@@ -105,6 +105,7 @@
                 <h2>Şantiyeler</h2>
                 <span id="siteCount">0 kayıt</span>
               </div>
+              <div class="site-tabs" id="siteTabs"></div>
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>Ad</th><th>Konum</th><th>Durum</th><th></th></tr></thead>
@@ -113,6 +114,7 @@
               </div>
             </section>
           </div>
+          <section class="site-detail" id="siteDetail"></section>
         </section>
 
         <section class="view" id="reports">
@@ -121,9 +123,13 @@
               <h2>Günlük Rapor Gir</h2>
               <label>Tarih<input name="date" type="date" required /></label>
               <label>Şantiye<select name="site" required></select></label>
-              <label>Yapılan işler<textarea name="work" rows="4" required placeholder="Bugün yapılan imalatlar"></textarea></label>
-              <label>Ekip / personel<input name="crew" placeholder="Örn. 4 kalıpçı, 3 demirci" /></label>
-              <label>Sonraki plan<textarea name="plan" rows="3" placeholder="Yarın veya sonraki iş planı"></textarea></label>
+              <div class="crew-builder" id="crewBuilder">
+                <div class="crew-row">
+                  <label>Ekip adı<input name="crewName" placeholder="Örn. Kalıp ekibi" /></label>
+                  <label>Ekip notu<textarea name="crewText" rows="4" placeholder="Bu ekibin yaptığı işler"></textarea></label>
+                </div>
+              </div>
+              <button class="ghost-button" id="addCrewRow" type="button">Ekip Ekle</button>
               <label>Risk / olay / not<textarea name="note" rows="3"></textarea></label>
               <button class="primary-button" type="submit">Raporu Kaydet</button>
             </form>
@@ -228,6 +234,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=20260707-get-append"></script>
+    <script src="app.js?v=20260707-site-tabs-reports"></script>
   </body>
 </html>

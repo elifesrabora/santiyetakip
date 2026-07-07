@@ -13,6 +13,7 @@ let state = loadState();
 let settings = loadSettings();
 let syncTimer = null;
 let isSyncing = false;
+let activeSiteId = state.sites[0]?.id || "";
 
 const views = {
   overview: "Genel Bakış",
@@ -40,6 +41,7 @@ document.getElementById("seedData").addEventListener("click", seedExampleData);
 document.getElementById("exportJson").addEventListener("click", exportJson);
 document.getElementById("clearData").addEventListener("click", clearAllData);
 document.getElementById("exportReports").addEventListener("click", exportReportsCsv);
+document.getElementById("addCrewRow").addEventListener("click", () => addCrewRow());
 
 document.getElementById("scriptUrl").value = settings.scriptUrl || "";
 document.getElementById("settingsForm").addEventListener("submit", (event) => {
@@ -58,15 +60,7 @@ bindForm("siteForm", "sites", "push", (data) => ({
     note: data.note
 }));
 
-bindForm("reportForm", "reports", "unshift", (data) => ({
-    id: crypto.randomUUID(),
-    date: data.date,
-    site: data.site,
-    work: data.work,
-    crew: data.crew,
-    plan: data.plan,
-    note: data.note
-}));
+bindReportForm();
 
 bindForm("orderForm", "orders", "unshift", (data) => ({
     id: crypto.randomUUID(),
@@ -96,6 +90,7 @@ function bindForm(id, collection, insertMethod, buildItem) {
     const data = Object.fromEntries(new FormData(form).entries());
     const item = buildItem(data);
     state[collection][insertMethod](item);
+    if (collection === "sites" && !activeSiteId) activeSiteId = item.id;
     saveState();
     form.reset();
     form.querySelectorAll('input[type="date"]').forEach((input) => {
@@ -103,6 +98,40 @@ function bindForm(id, collection, insertMethod, buildItem) {
     });
     render();
     appendRecordToSheets(collection, item);
+  });
+}
+
+function bindReportForm() {
+  const form = document.getElementById("reportForm");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const crews = collectCrewRows();
+    if (!crews.length) {
+      alert("En az bir ekip adı veya ekip notu girmen gerekiyor.");
+      return;
+    }
+
+    const item = {
+      id: crypto.randomUUID(),
+      date: data.date,
+      site: data.site,
+      crews,
+      crew: crews.map((crew) => crew.name).filter(Boolean).join(", "),
+      work: crews.map((crew) => `${crew.name || "Ekip"}: ${crew.text}`).join(" | "),
+      plan: "",
+      note: data.note
+    };
+
+    state.reports.unshift(item);
+    saveState();
+    form.reset();
+    form.querySelectorAll('input[type="date"]').forEach((input) => {
+      input.value = today;
+    });
+    resetCrewRows();
+    render();
+    appendRecordToSheets("reports", item);
   });
 }
 
@@ -145,6 +174,9 @@ function saveSettings() {
 }
 
 function render() {
+  if (!state.sites.some((site) => site.id === activeSiteId)) {
+    activeSiteId = state.sites[0]?.id || "";
+  }
   renderSiteSelects();
   renderMetrics();
   renderSites();
@@ -152,6 +184,7 @@ function render() {
   renderOrders();
   renderIssues();
   renderOverview();
+  renderSiteDetail();
 }
 
 function renderSiteSelects() {
@@ -178,6 +211,21 @@ function renderMetrics() {
 
 function renderSites() {
   document.getElementById("siteCount").textContent = `${state.sites.length} kayıt`;
+  const tabs = document.getElementById("siteTabs");
+  tabs.innerHTML = "";
+  state.sites.forEach((site) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = `site-tab ${site.id === activeSiteId ? "active" : ""}`;
+    tab.textContent = site.name;
+    tab.addEventListener("click", () => {
+      activeSiteId = site.id;
+      renderSites();
+      renderSiteDetail();
+    });
+    tabs.append(tab);
+  });
+
   const tbody = document.getElementById("siteTable");
   tbody.innerHTML = "";
   state.sites.forEach((site) => {
@@ -186,9 +234,82 @@ function renderSites() {
       <td><strong>${escapeHtml(site.name)}</strong><br><span class="empty">${escapeHtml(site.chief || "Şef girilmedi")}</span></td>
       <td>${escapeHtml(site.location || "-")}</td>
       <td><span class="badge">${escapeHtml(site.status)}</span></td>
-      <td><button class="tiny-button" title="Sil" data-delete="sites" data-id="${site.id}">x</button></td>
+      <td>
+        <button class="tiny-button" title="Aç" data-open-site="${site.id}">→</button>
+        <button class="tiny-button" title="Sil" data-delete="sites" data-id="${site.id}">x</button>
+      </td>
     `;
     tbody.append(row);
+  });
+}
+
+function renderSiteDetail() {
+  const target = document.getElementById("siteDetail");
+  target.innerHTML = "";
+  if (!state.sites.length) return;
+
+  const site = state.sites.find((item) => item.id === activeSiteId) || state.sites[0];
+  if (!site) return;
+
+  const reports = state.reports.filter((report) => report.site === site.name);
+  const orders = state.orders.filter((order) => order.site === site.name);
+  const issues = state.issues.filter((issue) => issue.site === site.name);
+
+  target.innerHTML = `
+    <section class="panel">
+      <div class="site-detail-header">
+        <div>
+          <h2>${escapeHtml(site.name)}</h2>
+          <p class="helper-text">${escapeHtml(site.location || "Konum girilmedi")} / ${escapeHtml(site.status || "Durum yok")}</p>
+        </div>
+        <span class="badge">${reports.length} rapor / ${orders.length} sipariş / ${issues.length} sorun</span>
+      </div>
+    </section>
+    <div class="site-detail-grid">
+      <section class="panel">
+        <div class="panel-header"><h2>Günlük Raporlar</h2><span>${reports.length} kayıt</span></div>
+        <div class="list" id="siteReports"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-header"><h2>Siparişler</h2><span>${orders.length} kayıt</span></div>
+        <div class="list" id="siteOrders"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-header"><h2>Sorunlar</h2><span>${issues.length} kayıt</span></div>
+        <div class="list" id="siteIssues"></div>
+      </section>
+    </div>
+  `;
+
+  const reportList = document.getElementById("siteReports");
+  const orderList = document.getElementById("siteOrders");
+  const issueList = document.getElementById("siteIssues");
+
+  if (!reports.length) renderEmpty(reportList, "Bu şantiye için rapor yok.");
+  reports.forEach((report) => reportList.append(reportCard(report)));
+
+  if (!orders.length) renderEmpty(orderList, "Bu şantiye için sipariş yok.");
+  orders.forEach((order) => {
+    orderList.append(itemCard({
+      title: `${order.type}: ${order.detail}`,
+      meta: formatDate(order.date),
+      body: order.amount || "Miktar girilmedi",
+      badge: order.status,
+      collection: "orders",
+      id: order.id
+    }));
+  });
+
+  if (!issues.length) renderEmpty(issueList, "Bu şantiye için sorun yok.");
+  issues.forEach((issue) => {
+    issueList.append(itemCard({
+      title: issue.location || "Konum girilmedi",
+      meta: issue.status,
+      body: issue.description,
+      badge: issue.priority,
+      collection: "issues",
+      id: issue.id
+    }));
   });
 }
 
@@ -197,14 +318,7 @@ function renderReports() {
   list.innerHTML = "";
   if (!state.reports.length) return renderEmpty(list, "Henüz günlük rapor yok.");
   state.reports.forEach((report) => {
-    list.append(itemCard({
-      title: `${report.site} - ${formatDate(report.date)}`,
-      meta: report.crew || "Ekip bilgisi yok",
-      body: report.work,
-      foot: report.plan ? `Sonraki plan: ${report.plan}` : "",
-      collection: "reports",
-      id: report.id
-    }));
+    list.append(reportCard(report));
   });
 }
 
@@ -309,6 +423,35 @@ function itemCard({ title, meta, body, foot, badge, collection, id }) {
   return card;
 }
 
+function reportCard(report) {
+  const card = document.createElement("article");
+  card.className = "item";
+  const crews = getReportCrews(report);
+  const crewHtml = crews.length
+    ? crews.map((crew) => `
+        <div class="item-section">
+          <strong>${escapeHtml(crew.name || "Ekip")}</strong>
+          <p>${escapeHtml(crew.text || "Not girilmedi")}</p>
+        </div>
+      `).join("")
+    : `<p>${escapeHtml(report.work || "Rapor detayı yok")}</p>`;
+
+  card.innerHTML = `
+    <div class="item-top">
+      <div>
+        <strong>${escapeHtml(report.site)} - ${formatDate(report.date)}</strong>
+        <p>${escapeHtml(report.crew || "Ekip bilgisi yok")}</p>
+      </div>
+      <div class="item-actions">
+        <button class="tiny-button" title="Sil" data-delete="reports" data-id="${report.id}">x</button>
+      </div>
+    </div>
+    ${crewHtml}
+    ${report.note ? `<p>${escapeHtml(report.note)}</p>` : ""}
+  `;
+  return card;
+}
+
 function renderEmpty(target, text) {
   const empty = document.createElement("p");
   empty.className = "empty";
@@ -317,6 +460,15 @@ function renderEmpty(target, text) {
 }
 
 document.addEventListener("click", (event) => {
+  const siteButton = event.target.closest("[data-open-site]");
+  if (siteButton) {
+    activeSiteId = siteButton.dataset.openSite;
+    switchView("sites");
+    renderSites();
+    renderSiteDetail();
+    return;
+  }
+
   const button = event.target.closest("[data-delete]");
   if (!button) return;
   const collection = button.dataset.delete;
@@ -333,7 +485,16 @@ function seedExampleData() {
       { id: crypto.randomUUID(), name: "Merkez Blok A", location: "Kadıköy / İstanbul", chief: "Elif Esra", status: "Aktif", note: "Kaba inşaat devam ediyor." }
     ],
     reports: [
-      { id: crypto.randomUUID(), date: today, site: "Merkez Blok A", work: "Aks 3-5 arası kolon demirleri bağlandı. Kalıp kontrolü yapıldı.", crew: "3 demirci, 2 kalıpçı", plan: "Kolon kalıpları kapatılacak.", note: "" }
+      {
+        id: crypto.randomUUID(),
+        date: today,
+        site: "Merkez Blok A",
+        crews: [{ name: "Demir ekibi", text: "Aks 3-5 arası kolon demirleri bağlandı." }, { name: "Kalıp ekibi", text: "Kalıp kontrolü yapıldı." }],
+        work: "Demir ekibi: Aks 3-5 arası kolon demirleri bağlandı. | Kalıp ekibi: Kalıp kontrolü yapıldı.",
+        crew: "Demir ekibi, Kalıp ekibi",
+        plan: "",
+        note: ""
+      }
     ],
     orders: [
       { id: crypto.randomUUID(), date: today, site: "Merkez Blok A", type: "Beton", detail: "C30", amount: "32 m3", status: "Sipariş verildi" }
@@ -352,9 +513,9 @@ function exportJson() {
 }
 
 function exportReportsCsv() {
-  const rows = [["Tarih", "Şantiye", "Yapılan işler", "Ekip", "Sonraki plan", "Not"]];
+  const rows = [["Tarih", "Şantiye", "Ekipler", "Yapılan işler", "Not"]];
   state.reports.forEach((report) => {
-    rows.push([report.date, report.site, report.work, report.crew, report.plan, report.note]);
+    rows.push([report.date, report.site, report.crew, report.work, report.note]);
   });
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
   downloadFile(`gunluk-raporlar-${today}.csv`, csv, "text/csv");
@@ -580,6 +741,47 @@ function requireScriptUrl() {
 
 function setSyncStatus(message) {
   document.getElementById("syncStatus").textContent = message;
+}
+
+function addCrewRow(name = "", text = "") {
+  const builder = document.getElementById("crewBuilder");
+  const row = document.createElement("div");
+  row.className = "crew-row";
+  row.innerHTML = `
+    <div class="crew-row-header">
+      <strong>Ekip</strong>
+      <button class="tiny-button" type="button" title="Ekibi kaldır">x</button>
+    </div>
+    <label>Ekip adı<input name="crewName" placeholder="Örn. Kalıp ekibi" value="${escapeHtml(name)}" /></label>
+    <label>Ekip notu<textarea name="crewText" rows="4" placeholder="Bu ekibin yaptığı işler">${escapeHtml(text)}</textarea></label>
+  `;
+  row.querySelector("button").addEventListener("click", () => {
+    if (document.querySelectorAll("#crewBuilder .crew-row").length > 1) {
+      row.remove();
+    }
+  });
+  builder.append(row);
+}
+
+function resetCrewRows() {
+  const builder = document.getElementById("crewBuilder");
+  builder.innerHTML = "";
+  addCrewRow();
+}
+
+function collectCrewRows() {
+  return [...document.querySelectorAll("#crewBuilder .crew-row")]
+    .map((row) => ({
+      name: row.querySelector('[name="crewName"]')?.value.trim() || "",
+      text: row.querySelector('[name="crewText"]')?.value.trim() || ""
+    }))
+    .filter((crew) => crew.name || crew.text);
+}
+
+function getReportCrews(report) {
+  if (Array.isArray(report.crews)) return report.crews;
+  if (!report.crew && !report.work) return [];
+  return [{ name: report.crew || "Ekip", text: report.work || "" }];
 }
 
 function downloadFile(filename, content, type) {
