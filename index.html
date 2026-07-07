@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Saha Defteri</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">SD</div>
+          <div>
+            <strong>Saha Defteri</strong>
+            <span>Kisisel takip paneli</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Ana menü">
+          <button class="nav-button active" data-view="overview">Genel Bakış</button>
+          <button class="nav-button" data-view="sites">Şantiyeler</button>
+          <button class="nav-button" data-view="reports">Günlük Rapor</button>
+          <button class="nav-button" data-view="orders">Siparişler</button>
+          <button class="nav-button" data-view="issues">Sorunlar</button>
+          <button class="nav-button" data-view="sheets">Sheets</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button class="ghost-button" id="exportJson">Veriyi İndir</button>
+          <button class="ghost-button danger" id="clearData">Sıfırla</button>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Bugün</p>
+            <h1 id="pageTitle">Genel Bakış</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="seedData" title="Örnek veri ekle">+</button>
+            <button class="primary-button" id="quickReport">Rapor Gir</button>
+          </div>
+        </header>
+
+        <section class="view active" id="overview">
+          <div class="metrics-grid">
+            <article class="metric">
+              <span>Aktif Şantiye</span>
+              <strong id="metricSites">0</strong>
+            </article>
+            <article class="metric">
+              <span>Açık Sorun</span>
+              <strong id="metricIssues">0</strong>
+            </article>
+            <article class="metric">
+              <span>Bekleyen Sipariş</span>
+              <strong id="metricOrders">0</strong>
+            </article>
+            <article class="metric">
+              <span>Bu Ay Rapor</span>
+              <strong id="metricReports">0</strong>
+            </article>
+          </div>
+
+          <div class="split-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Bugünkü İşler</h2>
+                <span id="todayLabel"></span>
+              </div>
+              <div class="list" id="todayList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Öncelikli Sorunlar</h2>
+                <span>Sahada takip</span>
+              </div>
+              <div class="list" id="priorityIssues"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="sites">
+          <div class="work-grid">
+            <form class="panel form-panel" id="siteForm">
+              <h2>Şantiye Ekle</h2>
+              <label>Şantiye adı<input name="name" required placeholder="Örn. Merkez Blok A" /></label>
+              <label>Konum<input name="location" placeholder="İlçe / mahalle / ada-parsel" /></label>
+              <label>Şantiye şefi<input name="chief" placeholder="Ad soyad" /></label>
+              <label>Durum
+                <select name="status">
+                  <option>Aktif</option>
+                  <option>Beklemede</option>
+                  <option>Tamamlandı</option>
+                </select>
+              </label>
+              <label>Not<textarea name="note" rows="4" placeholder="Kısa saha notu"></textarea></label>
+              <button class="primary-button" type="submit">Kaydet</button>
+            </form>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Şantiyeler</h2>
+                <span id="siteCount">0 kayıt</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Ad</th><th>Konum</th><th>Durum</th><th></th></tr></thead>
+                  <tbody id="siteTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="reports">
+          <div class="work-grid">
+            <form class="panel form-panel" id="reportForm">
+              <h2>Günlük Rapor Gir</h2>
+              <label>Tarih<input name="date" type="date" required /></label>
+              <label>Şantiye<select name="site" required></select></label>
+              <label>Yapılan işler<textarea name="work" rows="4" required placeholder="Bugün yapılan imalatlar"></textarea></label>
+              <label>Ekip / personel<input name="crew" placeholder="Örn. 4 kalıpçı, 3 demirci" /></label>
+              <label>Sonraki plan<textarea name="plan" rows="3" placeholder="Yarın veya sonraki iş planı"></textarea></label>
+              <label>Risk / olay / not<textarea name="note" rows="3"></textarea></label>
+              <button class="primary-button" type="submit">Raporu Kaydet</button>
+            </form>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Raporlar</h2>
+                <button class="ghost-button" id="exportReports">CSV</button>
+              </div>
+              <div class="list" id="reportList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="orders">
+          <div class="work-grid">
+            <form class="panel form-panel" id="orderForm">
+              <h2>Sipariş Ekle</h2>
+              <label>Tarih<input name="date" type="date" required /></label>
+              <label>Şantiye<select name="site" required></select></label>
+              <label>Tür
+                <select name="type">
+                  <option>Beton</option>
+                  <option>Demir</option>
+                  <option>Diğer malzeme</option>
+                </select>
+              </label>
+              <label>Detay<input name="detail" required placeholder="C30 beton, 12'lik demir, briket..." /></label>
+              <label>Miktar<input name="amount" placeholder="Örn. 45 m3 / 2 ton" /></label>
+              <label>Durum
+                <select name="status">
+                  <option>Sipariş verildi</option>
+                  <option>Sevkiyatta</option>
+                  <option>Teslim alındı</option>
+                  <option>Ertelendi</option>
+                </select>
+              </label>
+              <button class="primary-button" type="submit">Kaydet</button>
+            </form>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Siparişler</h2>
+                <span id="orderCount">0 kayıt</span>
+              </div>
+              <div class="list" id="orderList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="issues">
+          <div class="work-grid">
+            <form class="panel form-panel" id="issueForm">
+              <h2>Sorun / Eksik Ekle</h2>
+              <label>Şantiye<select name="site" required></select></label>
+              <label>Konum<input name="location" placeholder="Blok, kat, daire, aks" /></label>
+              <label>Açıklama<textarea name="description" rows="4" required></textarea></label>
+              <label>Öncelik
+                <select name="priority">
+                  <option>Yüksek</option>
+                  <option>Orta</option>
+                  <option>Düşük</option>
+                </select>
+              </label>
+              <label>Durum
+                <select name="status">
+                  <option>Açık</option>
+                  <option>Takipte</option>
+                  <option>Çözüldü</option>
+                </select>
+              </label>
+              <button class="primary-button" type="submit">Kaydet</button>
+            </form>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Sorun Listesi</h2>
+                <span id="issueCount">0 kayıt</span>
+              </div>
+              <div class="list" id="issueList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="sheets">
+          <div class="work-grid">
+            <form class="panel form-panel" id="settingsForm">
+              <h2>Google Sheets Bağlantısı</h2>
+              <label>Spreadsheet ID
+                <input name="spreadsheetId" value="1xfp9vUbdJpq39P1fZgYVb5rHqGr5b9HPKfujuai4YaM" readonly />
+              </label>
+              <label>Apps Script web app URL
+                <input name="scriptUrl" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+              </label>
+              <button class="primary-button" type="submit">Bağlantıyı Kaydet</button>
+            </form>
+
+            <section class="panel form-panel">
+              <h2>Senkronizasyon</h2>
+              <p class="helper-text">Önce Apps Script'i yayınlayıp web app URL'sini buraya kaydet. Sonra veriyi Sheets'e gönderebilir veya Sheets'ten çekebilirsin.</p>
+              <div class="button-row">
+                <button class="primary-button" id="pushSheets" type="button">Sheets'e Gönder</button>
+                <button class="ghost-button" id="pullSheets" type="button">Sheets'ten Çek</button>
+              </div>
+              <div class="sync-status" id="syncStatus">Bağlantı bekleniyor.</div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
