@@ -189,6 +189,12 @@ button {
   gap: 10px;
 }
 
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .view {
   display: none;
 }

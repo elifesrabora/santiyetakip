@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Saha Defteri</title>
-    <link rel="stylesheet" href="styles.css?v=20260707-order-forms" />
+    <link rel="stylesheet" href="styles.css?v=20260707-edit-plans-orders" />
   </head>
   <body>
     <div class="app-shell">
@@ -151,7 +151,7 @@
         <section class="view" id="planning">
           <div class="planning-layout">
             <form class="panel form-panel" id="planForm">
-              <h2>Planlama Gir</h2>
+              <h2 id="planFormTitle">Planlama Gir</h2>
               <label>Tarih<input name="date" type="date" required /></label>
               <label>Şantiye<select name="site" required></select></label>
               <label>Başlık<input name="title" required placeholder="Örn. 3. kat beton hazırlığı" /></label>
@@ -163,7 +163,10 @@
               </div>
               <button class="ghost-button" id="addPlanCrewRow" type="button">Ekip Ekle</button>
               <label>Genel not<textarea name="note" rows="3"></textarea></label>
-              <button class="primary-button" type="submit">Planı Kaydet</button>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Planı Kaydet</button>
+                <button class="ghost-button" id="cancelPlanEdit" type="button" hidden>Vazgeç</button>
+              </div>
             </form>
             <section class="panel planning-calendar-panel">
               <div class="panel-header">
@@ -198,7 +201,7 @@
           <div class="orders-layout">
             <div class="order-entry-stack">
               <form class="panel form-panel" id="concreteOrderForm">
-                <h2>Beton Siparişi</h2>
+                <h2 id="concreteOrderFormTitle">Beton Siparişi</h2>
                 <label>Tarih<input name="date" type="date" required /></label>
                 <label>Şantiye<select name="site" required></select></label>
                 <label>Beton sınıfı<input name="concreteClass" required placeholder="Örn. C30" /></label>
@@ -213,10 +216,13 @@
                     <option>Ertelendi</option>
                   </select>
                 </label>
-                <button class="primary-button" type="submit">Beton Kaydet</button>
+                <div class="form-actions">
+                  <button class="primary-button" type="submit">Beton Kaydet</button>
+                  <button class="ghost-button" data-cancel-order-edit type="button" hidden>Vazgeç</button>
+                </div>
               </form>
               <form class="panel form-panel" id="rebarOrderForm">
-                <h2>Demir Siparişi</h2>
+                <h2 id="rebarOrderFormTitle">Demir Siparişi</h2>
                 <label>Tarih<input name="date" type="date" required /></label>
                 <label>Şantiye<select name="site" required></select></label>
                 <label>Firma adı<input name="company" required placeholder="Firma adı" /></label>
@@ -235,10 +241,13 @@
                     <option>Ertelendi</option>
                   </select>
                 </label>
-                <button class="primary-button" type="submit">Demir Kaydet</button>
+                <div class="form-actions">
+                  <button class="primary-button" type="submit">Demir Kaydet</button>
+                  <button class="ghost-button" data-cancel-order-edit type="button" hidden>Vazgeç</button>
+                </div>
               </form>
               <form class="panel form-panel" id="otherOrderForm">
-                <h2>Diğer Siparişler</h2>
+                <h2 id="otherOrderFormTitle">Diğer Siparişler</h2>
                 <label>Tarih<input name="date" type="date" required /></label>
                 <label>Şantiye<select name="site" required></select></label>
                 <label>Sipariş edilen ürün<input name="product" required placeholder="Örn. Briket, çimento, membran" /></label>
@@ -252,7 +261,10 @@
                     <option>Ertelendi</option>
                   </select>
                 </label>
-                <button class="primary-button" type="submit">Diğer Kaydet</button>
+                <div class="form-actions">
+                  <button class="primary-button" type="submit">Diğer Kaydet</button>
+                  <button class="ghost-button" data-cancel-order-edit type="button" hidden>Vazgeç</button>
+                </div>
               </form>
             </div>
             <section class="panel">
@@ -339,6 +351,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=20260707-order-forms"></script>
+    <script src="app.js?v=20260707-edit-plans-orders"></script>
   </body>
 </html>

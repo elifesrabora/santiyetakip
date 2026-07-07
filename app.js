@@ -16,6 +16,8 @@ let syncTimer = null;
 let isSyncing = false;
 let activeSiteId = state.sites[0]?.id || "";
 let editingReportId = "";
+let editingPlanId = "";
+let editingOrderId = "";
 let activeWeekStart;
 let activeReportModalId = "";
 
@@ -51,6 +53,10 @@ document.getElementById("exportReports").addEventListener("click", exportReports
 document.getElementById("addCrewRow").addEventListener("click", () => addCrewRow());
 document.getElementById("cancelReportEdit").addEventListener("click", cancelReportEdit);
 document.getElementById("addPlanCrewRow").addEventListener("click", () => addCrewRow("planCrewBuilder"));
+document.getElementById("cancelPlanEdit").addEventListener("click", cancelPlanEdit);
+document.querySelectorAll("[data-cancel-order-edit]").forEach((button) => {
+  button.addEventListener("click", cancelOrderEdit);
+});
 document.getElementById("prevWeek").addEventListener("click", () => changeWeek(-7));
 document.getElementById("nextWeek").addEventListener("click", () => changeWeek(7));
 document.getElementById("closeReportModal").addEventListener("click", closeReportModal);
@@ -168,7 +174,7 @@ function bindPlanForm() {
     }
 
     const item = {
-      id: crypto.randomUUID(),
+      id: editingPlanId || crypto.randomUUID(),
       date: data.date,
       site: data.site,
       title: data.title,
@@ -178,16 +184,27 @@ function bindPlanForm() {
       note: data.note
     };
 
-    state.plans.unshift(item);
+    const wasEditing = Boolean(editingPlanId);
+    if (wasEditing) {
+      state.plans = state.plans.map((plan) => plan.id === editingPlanId ? item : plan);
+    } else {
+      state.plans.unshift(item);
+    }
     saveState();
     form.reset();
     form.querySelectorAll('input[type="date"]').forEach((input) => {
       input.value = today;
     });
     resetCrewRows("planCrewBuilder");
+    editingPlanId = "";
+    updatePlanFormMode();
     activeWeekStart = getWeekStart(item.date);
     render();
-    appendRecordToSheets("plans", item);
+    if (wasEditing) {
+      upsertRecordToSheets("plans", item);
+    } else {
+      appendRecordToSheets("plans", item);
+    }
   });
 }
 
@@ -195,8 +212,8 @@ function bindOrderForms() {
   resetRebarRows();
   document.getElementById("addRebarRow").addEventListener("click", () => addRebarRow());
 
-  bindForm("concreteOrderForm", "orders", "unshift", (data) => ({
-    id: crypto.randomUUID(),
+  bindOrderForm("concreteOrderForm", (data) => ({
+    id: editingOrderId || crypto.randomUUID(),
     date: data.date,
     site: data.site,
     type: "Beton",
@@ -210,10 +227,10 @@ function bindOrderForms() {
     status: data.status
   }));
 
-  bindForm("rebarOrderForm", "orders", "unshift", (data) => {
+  bindOrderForm("rebarOrderForm", (data) => {
     const items = collectRebarRows();
     return {
-      id: crypto.randomUUID(),
+      id: editingOrderId || crypto.randomUUID(),
       date: data.date,
       site: data.site,
       type: "Demir",
@@ -225,8 +242,8 @@ function bindOrderForms() {
     };
   });
 
-  bindForm("otherOrderForm", "orders", "unshift", (data) => ({
-    id: crypto.randomUUID(),
+  bindOrderForm("otherOrderForm", (data) => ({
+    id: editingOrderId || crypto.randomUUID(),
     date: data.date,
     site: data.site,
     type: "Diğer",
@@ -236,6 +253,29 @@ function bindOrderForms() {
     company: data.company,
     status: data.status
   }));
+}
+
+function bindOrderForm(id, buildItem) {
+  const form = document.getElementById(id);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const item = buildItem(data);
+    const wasEditing = Boolean(editingOrderId);
+    if (wasEditing) {
+      state.orders = state.orders.map((order) => order.id === editingOrderId ? item : order);
+    } else {
+      state.orders.unshift(item);
+    }
+    saveState();
+    resetOrderForms();
+    render();
+    if (wasEditing) {
+      upsertRecordToSheets("orders", item);
+    } else {
+      appendRecordToSheets("orders", item);
+    }
+  });
 }
 
 function switchView(viewId) {
@@ -624,6 +664,7 @@ function itemCard({ title, meta, body, foot, badge, collection, id }) {
   const card = document.createElement("article");
   card.className = "item";
   const badgeClass = badge === "Yüksek" || badge === "Açık" ? "danger" : badge === "Orta" || badge === "Takipte" ? "warn" : "";
+  const canEdit = ["plans", "orders"].includes(collection);
   card.innerHTML = `
     <div class="item-top">
       <div>
@@ -632,6 +673,7 @@ function itemCard({ title, meta, body, foot, badge, collection, id }) {
       </div>
       <div class="item-actions">
         ${badge ? `<span class="badge ${badgeClass}">${escapeHtml(badge)}</span>` : ""}
+        ${canEdit ? `<button class="tiny-button" title="Düzenle" data-edit="${collection}" data-id="${id}">✎</button>` : ""}
         <button class="tiny-button" title="Sil" data-delete="${collection}" data-id="${id}">x</button>
       </div>
     </div>
@@ -687,6 +729,7 @@ function planCard(plan) {
         <p>${escapeHtml(plan.site)} / ${escapeHtml(plan.crew || "Ekip bilgisi yok")}</p>
       </div>
       <div class="item-actions">
+        <button class="tiny-button" title="Düzenle" data-edit="plans" data-id="${plan.id}">✎</button>
         <button class="tiny-button" title="Sil" data-delete="plans" data-id="${plan.id}">x</button>
       </div>
     </summary>
@@ -743,6 +786,14 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const editButton = event.target.closest("[data-edit]");
+  if (editButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    editRecord(editButton.dataset.edit, editButton.dataset.id);
+    return;
+  }
+
   const button = event.target.closest("[data-delete]");
   if (!button) return;
   event.preventDefault();
@@ -767,6 +818,70 @@ function editReport(id) {
   resetCrewRows("crewBuilder", getReportCrews(report));
   updateReportFormMode();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function editRecord(collection, id) {
+  if (collection === "plans") return editPlan(id);
+  if (collection === "orders") return editOrder(id);
+}
+
+function editPlan(id) {
+  const plan = state.plans.find((item) => item.id === id);
+  if (!plan) return;
+  editingPlanId = id;
+  switchView("planning");
+  const form = document.getElementById("planForm");
+  form.elements.date.value = toDateKey(plan.date);
+  form.elements.site.value = plan.site;
+  form.elements.title.value = plan.title || "";
+  form.elements.note.value = plan.note || "";
+  resetCrewRows("planCrewBuilder", getReportCrews(plan));
+  updatePlanFormMode();
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function editOrder(id) {
+  const order = state.orders.find((item) => item.id === id);
+  if (!order) return;
+  editingOrderId = id;
+  switchView("orders");
+  resetOrderForms(false);
+  const type = normalizeOrderType(order.type);
+  if (type === "Beton") fillConcreteOrderForm(order);
+  if (type === "Demir") fillRebarOrderForm(order);
+  if (type === "Diğer") fillOtherOrderForm(order);
+  updateOrderFormMode(type);
+  getOrderFormForType(type).scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function fillConcreteOrderForm(order) {
+  const form = document.getElementById("concreteOrderForm");
+  form.elements.date.value = toDateKey(order.date);
+  form.elements.site.value = order.site;
+  form.elements.concreteClass.value = order.concreteClass || order.detail || "";
+  form.elements.volume.value = order.volume || String(order.amount || "").replace(/[^\d.,]/g, "").replace(",", ".");
+  form.elements.pourLocation.value = order.pourLocation || "";
+  form.elements.company.value = order.company || "";
+  form.elements.status.value = order.status || "Teslim alındı";
+}
+
+function fillRebarOrderForm(order) {
+  const form = document.getElementById("rebarOrderForm");
+  form.elements.date.value = toDateKey(order.date);
+  form.elements.site.value = order.site;
+  form.elements.company.value = order.company || "";
+  form.elements.status.value = order.status || "Teslim alındı";
+  resetRebarRows(getRebarItems(order));
+}
+
+function fillOtherOrderForm(order) {
+  const form = document.getElementById("otherOrderForm");
+  form.elements.date.value = toDateKey(order.date);
+  form.elements.site.value = order.site;
+  form.elements.product.value = order.product || order.detail || "";
+  form.elements.amount.value = order.amount || "";
+  form.elements.company.value = order.company || "";
+  form.elements.status.value = order.status || "Sipariş verildi";
 }
 
 function openReportModal(id) {
@@ -844,6 +959,55 @@ function cancelReportEdit() {
 function updateReportFormMode() {
   document.getElementById("reportFormTitle").textContent = editingReportId ? "Günlük Raporu Düzenle" : "Günlük Rapor Gir";
   document.getElementById("cancelReportEdit").hidden = !editingReportId;
+}
+
+function cancelPlanEdit() {
+  editingPlanId = "";
+  const form = document.getElementById("planForm");
+  form.reset();
+  form.querySelectorAll('input[type="date"]').forEach((input) => {
+    input.value = today;
+  });
+  resetCrewRows("planCrewBuilder");
+  updatePlanFormMode();
+}
+
+function updatePlanFormMode() {
+  document.getElementById("planFormTitle").textContent = editingPlanId ? "Planlamayı Düzenle" : "Planlama Gir";
+  document.getElementById("cancelPlanEdit").hidden = !editingPlanId;
+}
+
+function cancelOrderEdit() {
+  resetOrderForms();
+}
+
+function resetOrderForms(clearEditing = true) {
+  if (clearEditing) editingOrderId = "";
+  ["concreteOrderForm", "rebarOrderForm", "otherOrderForm"].forEach((id) => {
+    const form = document.getElementById(id);
+    form.reset();
+    form.querySelectorAll('input[type="date"]').forEach((input) => {
+      input.value = today;
+    });
+  });
+  resetRebarRows();
+  updateOrderFormMode();
+}
+
+function updateOrderFormMode(activeType = "") {
+  const editingType = editingOrderId ? activeType : "";
+  document.getElementById("concreteOrderFormTitle").textContent = editingType === "Beton" ? "Beton Siparişini Düzenle" : "Beton Siparişi";
+  document.getElementById("rebarOrderFormTitle").textContent = editingType === "Demir" ? "Demir Siparişini Düzenle" : "Demir Siparişi";
+  document.getElementById("otherOrderFormTitle").textContent = editingType === "Diğer" ? "Diğer Siparişi Düzenle" : "Diğer Siparişler";
+  document.querySelectorAll("[data-cancel-order-edit]").forEach((button) => {
+    button.hidden = !editingOrderId;
+  });
+}
+
+function getOrderFormForType(type) {
+  if (type === "Beton") return document.getElementById("concreteOrderForm");
+  if (type === "Demir") return document.getElementById("rebarOrderForm");
+  return document.getElementById("otherOrderForm");
 }
 
 function openPlanDetails(id) {
