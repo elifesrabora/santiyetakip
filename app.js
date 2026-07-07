@@ -447,7 +447,8 @@ function renderPlanningCalendar() {
       chip.type = "button";
       chip.className = "plan-chip";
       chip.dataset.openPlan = plan.id;
-      chip.textContent = plan.title || plan.crew || "Plan";
+      chip.innerHTML = `<strong>${escapeHtml(plan.title || "Plan")}</strong><span>${escapeHtml(plan.site)}</span>`;
+      chip.addEventListener("click", () => openPlanDetails(plan.id));
       column.append(chip);
     });
     calendar.append(column);
@@ -554,18 +555,23 @@ function reportCard(report) {
   card.className = "report-summary";
   card.innerHTML = `
     <div class="item-top">
-      <button class="report-open" type="button" data-open-report="${report.id}">
+      <button class="report-open" type="button">
         <strong>${escapeHtml(report.site)}</strong>
         <p>${formatDate(report.date)}</p>
       </button>
       <div class="item-actions">
-        <button class="tiny-button" title="Detay" data-open-report="${report.id}">☰</button>
-        <button class="tiny-button" title="Düzenle" data-edit-report="${report.id}">✎</button>
-        <button class="tiny-button" title="İndir" data-download-report="${report.id}">↓</button>
+        <button class="tiny-button" title="Detay" type="button">☰</button>
+        <button class="tiny-button" title="Düzenle" type="button">✎</button>
+        <button class="tiny-button" title="İndir" type="button">↓</button>
         <button class="tiny-button" title="Sil" data-delete="reports" data-id="${report.id}">x</button>
       </div>
     </div>
   `;
+  const [detailButton, editButton, downloadButton] = card.querySelectorAll(".item-actions .tiny-button");
+  card.querySelector(".report-open").addEventListener("click", () => openReportModal(report.id));
+  detailButton.addEventListener("click", () => openReportModal(report.id));
+  editButton.addEventListener("click", () => editReport(report.id));
+  downloadButton.addEventListener("click", () => downloadReportById(report.id));
   return card;
 }
 
