@@ -28,7 +28,12 @@ function doPost(event) {
     if (payload.action === "append") {
       const item = typeof payload.item === "string" ? JSON.parse(payload.item) : payload.item || {};
       const result = appendData(spreadsheet, payload.collection, item);
-      return jsonResponse({ ok: true, sheetName: result.sheetName, rowNumber: result.rowNumber });
+      return postMessageResponse({
+        ok: true,
+        requestId: payload.requestId,
+        sheetName: result.sheetName,
+        rowNumber: result.rowNumber
+      });
     }
 
     if (payload.action === "save") {
@@ -40,9 +45,10 @@ function doPost(event) {
       return jsonResponse({ ok: true, data: loadData(spreadsheet) });
     }
 
-    return jsonResponse({ ok: false, error: "Bilinmeyen action" });
+    return postMessageResponse({ ok: false, requestId: payload.requestId, error: "Bilinmeyen action" });
   } catch (error) {
-    return jsonResponse({ ok: false, error: error.message });
+    const requestId = event && event.parameter ? event.parameter.requestId : "";
+    return postMessageResponse({ ok: false, requestId: requestId, error: error.message });
   }
 }
 
@@ -166,4 +172,13 @@ function response(payload, callback) {
   return ContentService
     .createTextOutput(callback + "(" + JSON.stringify(payload) + ");")
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+function postMessageResponse(payload) {
+  const html = "<!doctype html><html><body><script>" +
+    "window.parent.postMessage(" + JSON.stringify(payload) + ", '*');" +
+    "</script></body></html>";
+  return HtmlService
+    .createHtmlOutput(html)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

@@ -415,8 +415,8 @@ async function appendRecordToSheets(collection, item) {
   isSyncing = true;
   try {
     setSyncStatus("Kayıt Sheets'e yazılıyor...");
-    appendSheetsRecord(collection, item);
-    setSyncStatus("Kayıt ilgili Sheets sayfasına gönderildi.");
+    const response = await appendSheetsRecord(collection, item);
+    setSyncStatus(`${response.sheetName || "Sheets"} sayfasına yazıldı: satır ${response.rowNumber || "-"}`);
   } catch (error) {
     setSyncStatus(`Sheets'e yazma hatası: ${error.message}`);
   } finally {
@@ -460,7 +460,7 @@ async function saveSheetsData(data) {
 }
 
 function appendSheetsRecord(collection, item) {
-  submitSheetsForm({
+  return submitSheetsForm({
     action: "append",
     spreadsheetId,
     collection,
@@ -516,32 +516,55 @@ function callSheetsJsonp(action, data = null) {
 }
 
 function submitSheetsForm(fields) {
-  const iframeName = `sheetsTarget_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  const iframe = document.createElement("iframe");
-  iframe.name = iframeName;
-  iframe.hidden = true;
+  return new Promise((resolve, reject) => {
+    const requestId = `sheets_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const iframeName = `${requestId}_target`;
+    const iframe = document.createElement("iframe");
+    iframe.name = iframeName;
+    iframe.hidden = true;
 
-  const form = document.createElement("form");
-  form.method = "POST";
-  form.action = settings.scriptUrl;
-  form.target = iframeName;
-  form.hidden = true;
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = settings.scriptUrl;
+    form.target = iframeName;
+    form.hidden = true;
 
-  Object.entries(fields).forEach(([name, value]) => {
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = name;
-    input.value = value;
-    form.append(input);
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Apps Script yanıt vermedi. Kod güncel deploy edilmiş mi ve URL /exec ile mi bitiyor?"));
+    }, 15000);
+
+    function handleMessage(event) {
+      const message = event.data || {};
+      if (!message || message.requestId !== requestId) return;
+      cleanup();
+      if (!message.ok) {
+        reject(new Error(message.error || "Bilinmeyen Apps Script hatası"));
+        return;
+      }
+      resolve(message);
+    }
+
+    function cleanup() {
+      window.clearTimeout(timeout);
+      window.removeEventListener("message", handleMessage);
+      form.remove();
+      iframe.remove();
+    }
+
+    window.addEventListener("message", handleMessage);
+
+    Object.entries({ ...fields, requestId }).forEach(([name, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      form.append(input);
+    });
+
+    document.body.append(iframe, form);
+    form.submit();
   });
-
-  document.body.append(iframe, form);
-  form.submit();
-
-  window.setTimeout(() => {
-    form.remove();
-    iframe.remove();
-  }, 10000);
 }
 
 function normalizeRemoteState(remote) {
