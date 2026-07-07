@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Saha Defteri</title>
-    <link rel="stylesheet" href="styles.css?v=20260707-records-dashboard" />
+    <link rel="stylesheet" href="styles.css?v=20260707-preplans" />
   </head>
   <body>
     <div class="app-shell">
@@ -23,6 +23,7 @@
           <button class="nav-button" data-view="sites">Şantiyeler</button>
           <button class="nav-button" data-view="reports">Günlük Rapor</button>
           <button class="nav-button" data-view="planning">Planlama</button>
+          <button class="nav-button" data-view="preplans">Plan Öncesi</button>
           <button class="nav-button" data-view="progress">Hakediş</button>
           <button class="nav-button" data-view="orders">Siparişler</button>
           <button class="nav-button" data-view="issues">Sorunlar</button>
@@ -104,6 +105,7 @@
               <button class="site-tab active" type="button" data-record-panel="siteRecord">Şantiye Kayıt</button>
               <button class="site-tab" type="button" data-record-panel="reportRecord">Rapor Kayıt</button>
               <button class="site-tab" type="button" data-record-panel="planRecord">Planlama Kayıt</button>
+              <button class="site-tab" type="button" data-record-panel="prePlanRecord">Plan Öncesi Kayıt</button>
               <button class="site-tab" type="button" data-record-panel="orderRecord">Sipariş Kayıt</button>
               <button class="site-tab" type="button" data-record-panel="issueRecord">Sorun Kayıt</button>
             </div>
@@ -163,6 +165,32 @@
               <div class="form-actions">
                 <button class="primary-button" type="submit">Planı Kaydet</button>
                 <button class="ghost-button" id="cancelPlanEdit" type="button" hidden>Vazgeç</button>
+              </div>
+            </form>
+            </div>
+
+            <div class="record-panel" id="prePlanRecord">
+            <form class="panel form-panel" id="prePlanForm">
+              <h2 id="prePlanFormTitle">Plan Öncesi Hazırlık Gir</h2>
+              <label>Bağlı plan<select name="planId" required></select></label>
+              <div class="prep-task-builder" id="prepTaskBuilder">
+                <div class="prep-task-row">
+                  <label>Yapılacak iş<input name="taskTitle" required placeholder="Örn. Temizlik" /></label>
+                  <label>Açıklama<textarea name="taskNote" rows="3" placeholder="Kısa not"></textarea></label>
+                  <label>Durum
+                    <select name="taskStatus">
+                      <option>Yapılacak</option>
+                      <option>Devam ediyor</option>
+                      <option>Tamamlandı</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <button class="ghost-button" id="addPrepTaskRow" type="button">İş Ekle</button>
+              <label>Genel not<textarea name="note" rows="3"></textarea></label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Hazırlığı Kaydet</button>
+                <button class="ghost-button" id="cancelPrePlanEdit" type="button" hidden>Vazgeç</button>
               </div>
             </form>
             </div>
@@ -321,6 +349,16 @@
             </section>
         </section>
 
+        <section class="view" id="preplans">
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Plan Öncesi Hazırlıklar</h2>
+                <span id="prePlanCount">0 kayıt</span>
+              </div>
+              <div class="list" id="prePlanList"></div>
+            </section>
+        </section>
+
         <section class="view" id="progress">
           <section class="panel">
             <div class="panel-header">
@@ -392,6 +430,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=20260707-records-dashboard"></script>
+    <script src="app.js?v=20260707-preplans"></script>
   </body>
 </html>

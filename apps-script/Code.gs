@@ -13,6 +13,10 @@ const TABLES = {
     sheetName: "Planlamalar",
     headers: ["id", "date", "site", "title", "crew", "detail", "note"]
   },
+  prePlans: {
+    sheetName: "Plan Oncesi",
+    headers: ["id", "planId", "date", "site", "planTitle", "summary", "tasks", "note"]
+  },
   orders: {
     sheetName: "Siparisler",
     headers: ["id", "date", "site", "type", "detail", "amount", "company", "status", "concreteClass", "volume", "unit", "pourLocation", "rebarItems", "product"]

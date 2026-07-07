@@ -6,6 +6,7 @@ const initialState = {
   sites: [],
   reports: [],
   plans: [],
+  prePlans: [],
   orders: [],
   issues: []
 };
@@ -17,6 +18,7 @@ let isSyncing = false;
 let activeSiteId = state.sites[0]?.id || "";
 let editingReportId = "";
 let editingPlanId = "";
+let editingPrePlanId = "";
 let editingOrderId = "";
 let activeWeekStart;
 let activeReportModalId = "";
@@ -27,6 +29,7 @@ const views = {
   sites: "Şantiyeler",
   reports: "Günlük Rapor",
   planning: "Planlama",
+  preplans: "Plan Öncesi",
   progress: "Hakediş",
   orders: "Siparişler",
   issues: "Sorunlar",
@@ -58,6 +61,8 @@ document.getElementById("addCrewRow").addEventListener("click", () => addCrewRow
 document.getElementById("cancelReportEdit").addEventListener("click", cancelReportEdit);
 document.getElementById("addPlanCrewRow").addEventListener("click", () => addCrewRow("planCrewBuilder"));
 document.getElementById("cancelPlanEdit").addEventListener("click", cancelPlanEdit);
+document.getElementById("addPrepTaskRow").addEventListener("click", () => addPrepTaskRow());
+document.getElementById("cancelPrePlanEdit").addEventListener("click", cancelPrePlanEdit);
 document.querySelectorAll("[data-cancel-order-edit]").forEach((button) => {
   button.addEventListener("click", cancelOrderEdit);
 });
@@ -95,6 +100,7 @@ bindForm("siteForm", "sites", "push", (data) => ({
 
 bindReportForm();
 bindPlanForm();
+bindPrePlanForm();
 bindOrderForms();
 
 bindForm("issueForm", "issues", "unshift", (data) => ({
@@ -218,6 +224,53 @@ function bindPlanForm() {
   });
 }
 
+function bindPrePlanForm() {
+  const form = document.getElementById("prePlanForm");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const plan = state.plans.find((item) => item.id === data.planId);
+    const tasks = collectPrepTaskRows();
+    if (!plan) {
+      alert("Önce bağlı bir plan seçmen gerekiyor.");
+      return;
+    }
+    if (!tasks.length) {
+      alert("En az bir yapılacak iş girmen gerekiyor.");
+      return;
+    }
+
+    const item = {
+      id: editingPrePlanId || crypto.randomUUID(),
+      planId: plan.id,
+      planTitle: plan.title || "Plan",
+      date: plan.date,
+      site: plan.site,
+      tasks,
+      summary: tasks.map((task) => `${task.title} (${task.status})`).join(" | "),
+      note: data.note
+    };
+
+    const wasEditing = Boolean(editingPrePlanId);
+    if (wasEditing) {
+      state.prePlans = state.prePlans.map((prePlan) => prePlan.id === editingPrePlanId ? item : prePlan);
+    } else {
+      state.prePlans.unshift(item);
+    }
+    saveState();
+    form.reset();
+    resetPrepTaskRows();
+    editingPrePlanId = "";
+    updatePrePlanFormMode();
+    render();
+    if (wasEditing) {
+      upsertRecordToSheets("prePlans", item);
+    } else {
+      appendRecordToSheets("prePlans", item);
+    }
+  });
+}
+
 function bindOrderForms() {
   resetRebarRows();
   document.getElementById("addRebarRow").addEventListener("click", () => addRebarRow());
@@ -331,6 +384,7 @@ function normalizeState(value) {
     sites: Array.isArray(value.sites) ? value.sites : [],
     reports: Array.isArray(value.reports) ? value.reports : [],
     plans: Array.isArray(value.plans) ? value.plans : [],
+    prePlans: Array.isArray(value.prePlans) ? value.prePlans : [],
     orders: Array.isArray(value.orders) ? value.orders : [],
     issues: Array.isArray(value.issues) ? value.issues : []
   };
@@ -359,10 +413,12 @@ function render() {
     activeSiteId = state.sites[0]?.id || "";
   }
   renderSiteSelects();
+  renderPlanSelects();
   renderMetrics();
   renderSites();
   renderReports();
   renderPlans();
+  renderPrePlans();
   renderOrders();
   renderIssues();
   renderOverview();
@@ -382,6 +438,21 @@ function renderSiteSelects() {
     select.disabled = false;
     state.sites.forEach((site) => select.append(new Option(site.name, site.name)));
     if (current) select.value = current;
+  });
+}
+
+function renderPlanSelects() {
+  document.querySelectorAll('select[name="planId"]').forEach((select) => {
+    const current = select.value;
+    select.innerHTML = "";
+    if (!state.plans.length) {
+      select.append(new Option("Önce planlama kaydı ekle", ""));
+      select.disabled = true;
+      return;
+    }
+    select.disabled = false;
+    state.plans.forEach((plan) => select.append(new Option(planLabel(plan), plan.id)));
+    if (current && state.plans.some((plan) => plan.id === current)) select.value = current;
   });
 }
 
@@ -436,6 +507,7 @@ function renderSiteDetail() {
 
   const reports = state.reports.filter((report) => report.site === site.name);
   const plans = state.plans.filter((plan) => plan.site === site.name);
+  const prePlans = state.prePlans.filter((prePlan) => prePlan.site === site.name);
   const orders = state.orders.filter((order) => order.site === site.name);
   const issues = state.issues.filter((issue) => issue.site === site.name);
 
@@ -446,7 +518,7 @@ function renderSiteDetail() {
           <h2>${escapeHtml(site.name)}</h2>
           <p class="helper-text">${escapeHtml(site.location || "Konum girilmedi")} / ${escapeHtml(site.status || "Durum yok")}</p>
         </div>
-        <span class="badge">${reports.length} rapor / ${plans.length} plan / ${orders.length} sipariş / ${issues.length} sorun</span>
+        <span class="badge">${reports.length} rapor / ${plans.length} plan / ${prePlans.length} hazırlık / ${orders.length} sipariş / ${issues.length} sorun</span>
       </div>
     </section>
     <div class="site-detail-grid">
@@ -457,6 +529,10 @@ function renderSiteDetail() {
       <section class="panel">
         <div class="panel-header"><h2>Planlamalar</h2><span>${plans.length} kayıt</span></div>
         <div class="list" id="sitePlans"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-header"><h2>Plan Öncesi</h2><span>${prePlans.length} kayıt</span></div>
+        <div class="list" id="sitePrePlans"></div>
       </section>
       <section class="panel">
         <div class="panel-header"><h2>Siparişler</h2><span>${orders.length} kayıt</span></div>
@@ -471,6 +547,7 @@ function renderSiteDetail() {
 
   const reportList = document.getElementById("siteReports");
   const planList = document.getElementById("sitePlans");
+  const prePlanList = document.getElementById("sitePrePlans");
   const orderList = document.getElementById("siteOrders");
   const issueList = document.getElementById("siteIssues");
 
@@ -479,6 +556,9 @@ function renderSiteDetail() {
 
   if (!plans.length) renderEmpty(planList, "Bu şantiye için planlama yok.");
   plans.forEach((plan) => planList.append(planCard(plan)));
+
+  if (!prePlans.length) renderEmpty(prePlanList, "Bu şantiye için plan öncesi hazırlık yok.");
+  prePlans.forEach((prePlan) => prePlanList.append(prePlanCard(prePlan)));
 
   if (!orders.length) {
     renderEmpty(orderList, "Bu şantiye için sipariş yok.");
@@ -517,6 +597,17 @@ function renderPlans() {
   if (!state.plans.length) return renderEmpty(list, "Henüz planlama yok.");
   state.plans.forEach((plan) => {
     list.append(planCard(plan));
+  });
+}
+
+function renderPrePlans() {
+  const list = document.getElementById("prePlanList");
+  if (!list) return;
+  list.innerHTML = "";
+  document.getElementById("prePlanCount").textContent = `${state.prePlans.length} kayıt`;
+  if (!state.prePlans.length) return renderEmpty(list, "Henüz plan öncesi hazırlık yok.");
+  state.prePlans.forEach((prePlan) => {
+    list.append(prePlanCard(prePlan));
   });
 }
 
@@ -725,7 +816,7 @@ function itemCard({ title, meta, body, foot, badge, collection, id }) {
   const card = document.createElement("article");
   card.className = "item";
   const badgeClass = badge === "Yüksek" || badge === "Açık" ? "danger" : badge === "Orta" || badge === "Takipte" ? "warn" : "";
-  const canEdit = ["plans", "orders"].includes(collection);
+  const canEdit = ["plans", "prePlans", "orders"].includes(collection);
   card.innerHTML = `
     <div class="item-top">
       <div>
@@ -796,6 +887,36 @@ function planCard(plan) {
     </summary>
     ${crewHtml}
     ${plan.note ? `<p>${escapeHtml(plan.note)}</p>` : ""}
+  `;
+  return card;
+}
+
+function prePlanCard(prePlan) {
+  const card = document.createElement("details");
+  card.className = "item";
+  const tasks = getPrepTasks(prePlan);
+  const taskHtml = tasks.length
+    ? tasks.map((task) => `
+        <div class="item-section">
+          <strong>${escapeHtml(task.title || "Yapılacak iş")}</strong>
+          <p>${escapeHtml(task.note || "Not girilmedi")} / ${escapeHtml(task.status || "Yapılacak")}</p>
+        </div>
+      `).join("")
+    : `<p>${escapeHtml(prePlan.summary || "Hazırlık detayı yok")}</p>`;
+
+  card.innerHTML = `
+    <summary class="item-top">
+      <div>
+        <strong>${escapeHtml(planLabelById(prePlan.planId, prePlan))}</strong>
+        <p>${escapeHtml(prePlan.site || "Şantiye yok")}</p>
+      </div>
+      <div class="item-actions">
+        <button class="tiny-button" title="Düzenle" data-edit="prePlans" data-id="${prePlan.id}">✎</button>
+        <button class="tiny-button" title="Sil" data-delete="prePlans" data-id="${prePlan.id}">x</button>
+      </div>
+    </summary>
+    ${taskHtml}
+    ${prePlan.note ? `<p>${escapeHtml(prePlan.note)}</p>` : ""}
   `;
   return card;
 }
@@ -884,6 +1005,7 @@ function editReport(id) {
 
 function editRecord(collection, id) {
   if (collection === "plans") return editPlan(id);
+  if (collection === "prePlans") return editPrePlan(id);
   if (collection === "orders") return editOrder(id);
 }
 
@@ -900,6 +1022,20 @@ function editPlan(id) {
   form.elements.note.value = plan.note || "";
   resetCrewRows("planCrewBuilder", getReportCrews(plan));
   updatePlanFormMode();
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function editPrePlan(id) {
+  const prePlan = state.prePlans.find((item) => item.id === id);
+  if (!prePlan) return;
+  editingPrePlanId = id;
+  switchView("records");
+  switchRecordPanel("prePlanRecord");
+  const form = document.getElementById("prePlanForm");
+  form.elements.planId.value = prePlan.planId;
+  form.elements.note.value = prePlan.note || "";
+  resetPrepTaskRows(getPrepTasks(prePlan));
+  updatePrePlanFormMode();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1042,6 +1178,19 @@ function updatePlanFormMode() {
   document.getElementById("cancelPlanEdit").hidden = !editingPlanId;
 }
 
+function cancelPrePlanEdit() {
+  editingPrePlanId = "";
+  const form = document.getElementById("prePlanForm");
+  form.reset();
+  resetPrepTaskRows();
+  updatePrePlanFormMode();
+}
+
+function updatePrePlanFormMode() {
+  document.getElementById("prePlanFormTitle").textContent = editingPrePlanId ? "Plan Öncesi Hazırlığı Düzenle" : "Plan Öncesi Hazırlık Gir";
+  document.getElementById("cancelPrePlanEdit").hidden = !editingPrePlanId;
+}
+
 function cancelOrderEdit() {
   resetOrderForms();
 }
@@ -1079,6 +1228,16 @@ function getOrderPanelForType(type) {
   if (type === "Beton") return "concreteOrderPanel";
   if (type === "Demir") return "rebarOrderPanel";
   return "otherOrderPanel";
+}
+
+function planLabel(plan) {
+  return `${formatDate(plan.date)} - ${plan.site || "Şantiye yok"} - ${plan.title || "Plan"}`;
+}
+
+function planLabelById(planId, fallback = {}) {
+  const plan = state.plans.find((item) => item.id === planId);
+  if (plan) return planLabel(plan);
+  return `${fallback.date ? formatDate(fallback.date) : "Tarih yok"} - ${fallback.site || "Şantiye yok"} - ${fallback.planTitle || "Plan"}`;
 }
 
 function openPlanDetails(id) {
@@ -1353,6 +1512,8 @@ function normalizeRemoteState(remote) {
   return {
     sites: Array.isArray(remote.sites) ? remote.sites : [],
     reports: Array.isArray(remote.reports) ? remote.reports : [],
+    plans: Array.isArray(remote.plans) ? remote.plans : [],
+    prePlans: Array.isArray(remote.prePlans) ? remote.prePlans : [],
     orders: Array.isArray(remote.orders) ? remote.orders : [],
     issues: Array.isArray(remote.issues) ? remote.issues : []
   };
@@ -1411,6 +1572,59 @@ function getRebarItems(order) {
     const [diameter = "", quantity = ""] = part.split("-").map((value) => value.trim());
     return { diameter, quantity };
   }).filter((item) => item.diameter || item.quantity);
+}
+
+function addPrepTaskRow(title = "", note = "", status = "Yapılacak") {
+  const builder = document.getElementById("prepTaskBuilder");
+  const row = document.createElement("div");
+  row.className = "prep-task-row";
+  row.innerHTML = `
+    <div class="crew-row-header">
+      <strong>İş</strong>
+      <button class="tiny-button" type="button" title="İşi kaldır">x</button>
+    </div>
+    <label>Yapılacak iş<input name="taskTitle" required placeholder="Örn. Temizlik" value="${escapeHtml(title)}" /></label>
+    <label>Açıklama<textarea name="taskNote" rows="3" placeholder="Kısa not">${escapeHtml(note)}</textarea></label>
+    <label>Durum
+      <select name="taskStatus">
+        <option ${status === "Yapılacak" ? "selected" : ""}>Yapılacak</option>
+        <option ${status === "Devam ediyor" ? "selected" : ""}>Devam ediyor</option>
+        <option ${status === "Tamamlandı" ? "selected" : ""}>Tamamlandı</option>
+      </select>
+    </label>
+  `;
+  row.querySelector("button").addEventListener("click", () => {
+    if (builder.querySelectorAll(".prep-task-row").length > 1) {
+      row.remove();
+    }
+  });
+  builder.append(row);
+}
+
+function resetPrepTaskRows(tasks = [{ title: "", note: "", status: "Yapılacak" }]) {
+  const builder = document.getElementById("prepTaskBuilder");
+  builder.innerHTML = "";
+  const rows = tasks.length ? tasks : [{ title: "", note: "", status: "Yapılacak" }];
+  rows.forEach((task) => addPrepTaskRow(task.title, task.note, task.status));
+}
+
+function collectPrepTaskRows() {
+  return [...document.querySelectorAll("#prepTaskBuilder .prep-task-row")]
+    .map((row) => ({
+      title: row.querySelector('[name="taskTitle"]')?.value.trim() || "",
+      note: row.querySelector('[name="taskNote"]')?.value.trim() || "",
+      status: row.querySelector('[name="taskStatus"]')?.value || "Yapılacak"
+    }))
+    .filter((task) => task.title || task.note);
+}
+
+function getPrepTasks(prePlan) {
+  if (Array.isArray(prePlan.tasks)) return prePlan.tasks;
+  if (!prePlan.summary) return [];
+  return String(prePlan.summary).split("|").map((part) => {
+    const [title = "", statusPart = ""] = part.trim().split("(");
+    return { title: title.trim(), note: "", status: statusPart.replace(")", "").trim() || "Yapılacak" };
+  }).filter((task) => task.title);
 }
 
 function parseConcreteVolume(order) {

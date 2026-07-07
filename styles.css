@@ -429,7 +429,8 @@ button {
   border-bottom: 1px solid var(--line);
 }
 
-.crew-builder {
+.crew-builder,
+.prep-task-builder {
   display: grid;
   gap: 10px;
 }
@@ -450,7 +451,8 @@ button {
   background: var(--surface-2);
 }
 
-.crew-row {
+.crew-row,
+.prep-task-row {
   display: grid;
   gap: 10px;
   border: 1px solid var(--line);
