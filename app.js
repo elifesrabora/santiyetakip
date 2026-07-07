@@ -40,8 +40,6 @@ document.getElementById("seedData").addEventListener("click", seedExampleData);
 document.getElementById("exportJson").addEventListener("click", exportJson);
 document.getElementById("clearData").addEventListener("click", clearAllData);
 document.getElementById("exportReports").addEventListener("click", exportReportsCsv);
-document.getElementById("pushSheets").addEventListener("click", pushToSheets);
-document.getElementById("pullSheets").addEventListener("click", pullFromSheets);
 
 document.getElementById("scriptUrl").value = settings.scriptUrl || "";
 document.getElementById("settingsForm").addEventListener("submit", (event) => {
