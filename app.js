@@ -550,17 +550,20 @@ function itemCard({ title, meta, body, foot, badge, collection, id }) {
 }
 
 function reportCard(report) {
-  const card = document.createElement("button");
-  card.type = "button";
+  const card = document.createElement("article");
   card.className = "report-summary";
-  card.dataset.openReport = report.id;
   card.innerHTML = `
     <div class="item-top">
-      <div>
+      <button class="report-open" type="button" data-open-report="${report.id}">
         <strong>${escapeHtml(report.site)}</strong>
         <p>${formatDate(report.date)}</p>
+      </button>
+      <div class="item-actions">
+        <button class="tiny-button" title="Detay" data-open-report="${report.id}">☰</button>
+        <button class="tiny-button" title="Düzenle" data-edit-report="${report.id}">✎</button>
+        <button class="tiny-button" title="İndir" data-download-report="${report.id}">↓</button>
+        <button class="tiny-button" title="Sil" data-delete="reports" data-id="${report.id}">x</button>
       </div>
-      <span class="badge">Detay</span>
     </div>
   `;
   return card;
@@ -606,7 +609,17 @@ function renderEmpty(target, text) {
 document.addEventListener("click", (event) => {
   const reportButton = event.target.closest("[data-open-report]");
   if (reportButton) {
+    event.preventDefault();
+    event.stopPropagation();
     openReportModal(reportButton.dataset.openReport);
+    return;
+  }
+
+  const downloadReportButton = event.target.closest("[data-download-report]");
+  if (downloadReportButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    downloadReportById(downloadReportButton.dataset.downloadReport);
     return;
   }
 
@@ -680,7 +693,11 @@ function editActiveReportFromModal() {
 }
 
 function downloadActiveReport() {
-  const report = state.reports.find((item) => item.id === activeReportModalId);
+  downloadReportById(activeReportModalId);
+}
+
+function downloadReportById(id) {
+  const report = state.reports.find((item) => item.id === id);
   if (!report) return;
   const filename = `${slugify(report.site)}-${report.date}-gunluk-rapor.txt`;
   downloadFile(filename, reportText(report), "text/plain;charset=utf-8");

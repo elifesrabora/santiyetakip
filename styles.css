@@ -380,6 +380,7 @@ textarea {
 }
 
 .report-summary {
+  display: block;
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -391,6 +392,21 @@ textarea {
 
 .report-summary:hover {
   border-color: var(--accent);
+}
+
+.report-open {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.report-open strong,
+.report-open p {
+  display: block;
 }
 
 .item summary {
