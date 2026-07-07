@@ -48,8 +48,7 @@ document.getElementById("settingsForm").addEventListener("submit", (event) => {
   event.preventDefault();
   settings.scriptUrl = document.getElementById("scriptUrl").value.trim();
   saveSettings();
-  setSyncStatus("Bağlantı kaydedildi.");
-  autoPullFromSheets();
+  setSyncStatus("Bağlantı kaydedildi. Yeni kayıtlar ilgili Sheets sayfasına otomatik yazılacak.");
 });
 
 bindForm("siteForm", "sites", "push", (data) => ({
@@ -91,7 +90,6 @@ bindForm("issueForm", "issues", "unshift", (data) => ({
 }));
 
 render();
-autoPullFromSheets();
 
 function bindForm(id, collection, insertMethod, buildItem) {
   const form = document.getElementById(id);
@@ -498,7 +496,7 @@ function callSheetsJsonp(action, data = null) {
 
     script.onerror = () => {
       cleanup();
-      reject(new Error("Apps Script URL'si yüklenemedi."));
+      reject(new Error("Apps Script URL'si yüklenemedi. Web app URL /exec ile bitmeli ve erişim ayarı Anyone olmalı."));
     };
 
     function cleanup() {
