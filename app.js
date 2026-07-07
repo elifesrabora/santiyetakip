@@ -16,7 +16,7 @@ let syncTimer = null;
 let isSyncing = false;
 let activeSiteId = state.sites[0]?.id || "";
 let editingReportId = "";
-let activeWeekStart = getWeekStart(today);
+let activeWeekStart;
 
 const views = {
   overview: "Genel Bakış",
@@ -29,6 +29,7 @@ const views = {
 };
 
 const today = new Date().toISOString().slice(0, 10);
+activeWeekStart = getWeekStart(today);
 
 document.querySelectorAll('input[type="date"]').forEach((input) => {
   input.value = today;
@@ -204,10 +205,20 @@ function loadState() {
   const saved = localStorage.getItem(storageKey);
   if (!saved) return structuredClone(initialState);
   try {
-    return { ...structuredClone(initialState), ...JSON.parse(saved) };
+    return normalizeState({ ...structuredClone(initialState), ...JSON.parse(saved) });
   } catch {
     return structuredClone(initialState);
   }
+}
+
+function normalizeState(value) {
+  return {
+    sites: Array.isArray(value.sites) ? value.sites : [],
+    reports: Array.isArray(value.reports) ? value.reports : [],
+    plans: Array.isArray(value.plans) ? value.plans : [],
+    orders: Array.isArray(value.orders) ? value.orders : [],
+    issues: Array.isArray(value.issues) ? value.issues : []
+  };
 }
 
 function saveState() {
