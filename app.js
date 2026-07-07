@@ -384,8 +384,8 @@ async function pushToSheets() {
   if (!requireScriptUrl()) return;
   setSyncStatus("Sheets'e gönderiliyor...");
   try {
-    await saveSheetsData(state);
-    setSyncStatus("Gönderim yapıldı. Google Sheets sayfasını yenileyip kayıtları kontrol edebilirsin.");
+    const response = await saveSheetsData(state);
+    setSyncStatus(`Sheets'e kaydedildi. ${response.totalRows || 0} satır yazıldı.`);
   } catch (error) {
     setSyncStatus(`Gönderme hatası: ${error.message}`);
   }
@@ -403,8 +403,8 @@ async function autoPushToSheets() {
   isSyncing = true;
   try {
     setSyncStatus("Sheets'e otomatik gönderiliyor...");
-    await saveSheetsData(state);
-    setSyncStatus(`Otomatik senkronize edildi: ${formatTime(new Date())}`);
+    const response = await saveSheetsData(state);
+    setSyncStatus(`Otomatik senkronize edildi: ${response.totalRows || 0} satır / ${formatTime(new Date())}`);
   } catch (error) {
     setSyncStatus(`Otomatik gönderme hatası: ${error.message}`);
   } finally {
@@ -444,23 +444,25 @@ async function pullFromSheets() {
 }
 
 async function saveSheetsData(data) {
-  await fetch(settings.scriptUrl, {
-    method: "POST",
-    mode: "no-cors",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action: "save", spreadsheetId, data })
-  });
+  return callSheetsJsonp("save", data);
 }
 
 function loadSheetsData() {
+  return callSheetsJsonp("load");
+}
+
+function callSheetsJsonp(action, data = null) {
   return new Promise((resolve, reject) => {
     const callbackName = `sahaDefteriCallback_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     const script = document.createElement("script");
     const url = new URL(settings.scriptUrl);
 
-    url.searchParams.set("action", "load");
+    url.searchParams.set("action", action);
     url.searchParams.set("spreadsheetId", spreadsheetId);
     url.searchParams.set("callback", callbackName);
+    if (data) {
+      url.searchParams.set("payload", JSON.stringify(data));
+    }
 
     const timeout = window.setTimeout(() => {
       cleanup();

@@ -54,7 +54,7 @@ Baglamak icin:
 
 Kodda degisiklik yaparsan Apps Script'te tekrar `Deploy > Manage deployments > Edit > New version > Deploy` yapman gerekir.
 
-Baglanti kaydedildikten sonra uygulama acilista Sheets'ten son veriyi alir. Yeni kayit eklediginde veya sildiginde veriyi otomatik olarak Sheets'e gonderir.
+Baglanti kaydedildikten sonra uygulama acilista Sheets'ten son veriyi alir. Yeni kayit eklediginde veya sildiginde veriyi otomatik olarak Sheets'e gonderir ve kac satir yazildigini ekranda gosterir.
 
 ## Sonraki gelistirmeler
 

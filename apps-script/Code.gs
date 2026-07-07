@@ -45,6 +45,13 @@ function doGet(event) {
     const params = event.parameter || {};
     const spreadsheet = SpreadsheetApp.openById(params.spreadsheetId || DEFAULT_SPREADSHEET_ID);
     prepareSheets(spreadsheet);
+
+    if (params.action === "save") {
+      const data = params.payload ? JSON.parse(params.payload) : {};
+      const totalRows = saveData(spreadsheet, data);
+      return response({ ok: true, totalRows }, params.callback);
+    }
+
     return response({ ok: true, data: loadData(spreadsheet) }, params.callback);
   } catch (error) {
     const callback = event && event.parameter ? event.parameter.callback : "";
