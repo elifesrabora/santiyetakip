@@ -52,6 +52,12 @@ function doGet(event) {
       return response({ ok: true, totalRows }, params.callback);
     }
 
+    if (params.action === "append") {
+      const payload = params.payload ? JSON.parse(params.payload) : {};
+      const result = appendData(spreadsheet, payload.collection, payload.item || {});
+      return response({ ok: true, sheetName: result.sheetName, rowNumber: result.rowNumber }, params.callback);
+    }
+
     return response({ ok: true, data: loadData(spreadsheet) }, params.callback);
   } catch (error) {
     const callback = event && event.parameter ? event.parameter.callback : "";
@@ -89,6 +95,22 @@ function saveData(spreadsheet, data) {
     totalRows += values.length;
   });
   return totalRows;
+}
+
+function appendData(spreadsheet, collection, item) {
+  const table = TABLES[collection];
+  if (!table) throw new Error("Bilinmeyen tablo: " + collection);
+
+  const sheet = spreadsheet.getSheetByName(table.sheetName);
+  if (!sheet) throw new Error("Sayfa bulunamadı: " + table.sheetName);
+
+  const values = table.headers.map((header) => item[header] || "");
+  sheet.appendRow(values);
+
+  return {
+    sheetName: table.sheetName,
+    rowNumber: sheet.getLastRow()
+  };
 }
 
 function loadData(spreadsheet) {

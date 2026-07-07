@@ -52,19 +52,16 @@ document.getElementById("settingsForm").addEventListener("submit", (event) => {
   autoPullFromSheets();
 });
 
-bindForm("siteForm", (data) => {
-  state.sites.push({
+bindForm("siteForm", "sites", "push", (data) => ({
     id: crypto.randomUUID(),
     name: data.name,
     location: data.location,
     chief: data.chief,
     status: data.status,
     note: data.note
-  });
-});
+}));
 
-bindForm("reportForm", (data) => {
-  state.reports.unshift({
+bindForm("reportForm", "reports", "unshift", (data) => ({
     id: crypto.randomUUID(),
     date: data.date,
     site: data.site,
@@ -72,11 +69,9 @@ bindForm("reportForm", (data) => {
     crew: data.crew,
     plan: data.plan,
     note: data.note
-  });
-});
+}));
 
-bindForm("orderForm", (data) => {
-  state.orders.unshift({
+bindForm("orderForm", "orders", "unshift", (data) => ({
     id: crypto.randomUUID(),
     date: data.date,
     site: data.site,
@@ -84,36 +79,34 @@ bindForm("orderForm", (data) => {
     detail: data.detail,
     amount: data.amount,
     status: data.status
-  });
-});
+}));
 
-bindForm("issueForm", (data) => {
-  state.issues.unshift({
+bindForm("issueForm", "issues", "unshift", (data) => ({
     id: crypto.randomUUID(),
     site: data.site,
     location: data.location,
     description: data.description,
     priority: data.priority,
     status: data.status
-  });
-});
+}));
 
 render();
 autoPullFromSheets();
 
-function bindForm(id, onSubmit) {
+function bindForm(id, collection, insertMethod, buildItem) {
   const form = document.getElementById(id);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
-    onSubmit(data);
+    const item = buildItem(data);
+    state[collection][insertMethod](item);
     saveState();
     form.reset();
     form.querySelectorAll('input[type="date"]').forEach((input) => {
       input.value = today;
     });
     render();
-    scheduleAutoSync();
+    appendRecordToSheets(collection, item);
   });
 }
 
@@ -412,6 +405,27 @@ async function autoPushToSheets() {
   }
 }
 
+async function appendRecordToSheets(collection, item) {
+  if (!settings.scriptUrl) {
+    setSyncStatus("Kayıt cihazda saklandı. Sheets için önce Apps Script URL'sini kaydet.");
+    return;
+  }
+  if (isSyncing) {
+    window.setTimeout(() => appendRecordToSheets(collection, item), 800);
+    return;
+  }
+  isSyncing = true;
+  try {
+    setSyncStatus("Kayıt Sheets'e yazılıyor...");
+    const response = await appendSheetsRecord(collection, item);
+    setSyncStatus(`${response.sheetName || "Sheets"} sayfasına yazıldı: satır ${response.rowNumber || "-"}`);
+  } catch (error) {
+    setSyncStatus(`Sheets'e yazma hatası: ${error.message}`);
+  } finally {
+    isSyncing = false;
+  }
+}
+
 async function autoPullFromSheets() {
   if (!settings.scriptUrl || isSyncing) return;
   isSyncing = true;
@@ -445,6 +459,10 @@ async function pullFromSheets() {
 
 async function saveSheetsData(data) {
   return callSheetsJsonp("save", data);
+}
+
+async function appendSheetsRecord(collection, item) {
+  return callSheetsJsonp("append", { collection, item });
 }
 
 function loadSheetsData() {
