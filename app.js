@@ -617,23 +617,31 @@ function render() {
   if (!state.sites.some((site) => site.id === activeSiteId)) {
     activeSiteId = state.sites[0]?.id || "";
   }
-  renderSiteSelects();
-  renderPlanSelects();
-  renderMetrics();
-  renderSites();
-  renderReports();
-  renderPlans();
-  renderPrePlans();
-  renderOrders();
-  renderIssues();
-  renderOverview();
-  renderMaterialSummary();
-  renderConcreteProgress();
-  renderSteelProgress();
-  renderAreaProgress("wallProgress");
-  renderAreaProgress("plasterProgress");
-  renderAreaProgress("drywallProgress");
-  renderSiteDetail();
+  renderSafely("Şantiye seçimleri", renderSiteSelects);
+  renderSafely("Plan seçimleri", renderPlanSelects);
+  renderSafely("Genel metrikler", renderMetrics);
+  renderSafely("Şantiyeler", renderSites);
+  renderSafely("Günlük raporlar", renderReports);
+  renderSafely("Planlama", renderPlans);
+  renderSafely("Plan öncesi", renderPrePlans);
+  renderSafely("Siparişler", renderOrders);
+  renderSafely("Sorunlar", renderIssues);
+  renderSafely("Genel bakış", renderOverview);
+  renderSafely("Malzeme özeti", renderMaterialSummary);
+  renderSafely("Beton hakediş", renderConcreteProgress);
+  renderSafely("Demir hakediş", renderSteelProgress);
+  renderSafely("Duvar hakediş", () => renderAreaProgress("wallProgress"));
+  renderSafely("Sıva hakediş", () => renderAreaProgress("plasterProgress"));
+  renderSafely("Alçıpan hakediş", () => renderAreaProgress("drywallProgress"));
+  renderSafely("Şantiye detayı", renderSiteDetail);
+}
+
+function renderSafely(label, renderer) {
+  try {
+    renderer();
+  } catch (error) {
+    console.error(`${label} bölümü yüklenemedi`, error);
+  }
 }
 
 function renderSiteSelects() {
@@ -670,7 +678,7 @@ function renderMetrics() {
   document.getElementById("metricSites").textContent = state.sites.filter((site) => site.status !== "Tamamlandı").length;
   document.getElementById("metricIssues").textContent = state.issues.filter((issue) => issue.status !== "Çözüldü").length;
   document.getElementById("metricOrders").textContent = state.orders.filter((order) => order.status !== "Teslim alındı").length;
-  document.getElementById("metricReports").textContent = state.reports.filter((report) => report.date.slice(0, 7) === today.slice(0, 7)).length;
+  document.getElementById("metricReports").textContent = state.reports.filter((report) => toDateKey(report.date).slice(0, 7) === today.slice(0, 7)).length;
 }
 
 function renderSites() {
