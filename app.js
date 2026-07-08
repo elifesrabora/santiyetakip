@@ -59,6 +59,10 @@ let editingPrePlanId = "";
 let editingOrderId = "";
 let activeWeekStart;
 let activeReportModalId = "";
+let calculatorDisplay = "0";
+let calculatorStoredValue = null;
+let calculatorPendingOperator = "";
+let calculatorWaitingForOperand = false;
 
 const rebarDiameters = [
   { diameter: "Ø8", kgm: 0.395 },
@@ -197,7 +201,11 @@ document.querySelectorAll("[data-calculator-input]").forEach((input) => {
   input.addEventListener("input", updateCalculatorResult);
   input.addEventListener("change", updateCalculatorResult);
 });
+document.querySelectorAll("[data-calc-key]").forEach((button) => {
+  button.addEventListener("click", () => pressCalculatorKey(button.dataset.calcKey));
+});
 document.getElementById("clearCalculator").addEventListener("click", clearCalculator);
+document.addEventListener("keydown", handleCalculatorKeyboard);
 
 document.getElementById("scriptUrl").value = settings.scriptUrl || "";
 document.getElementById("settingsForm").addEventListener("submit", (event) => {
@@ -1897,6 +1905,13 @@ function switchCalculatorPanel(panelId) {
 }
 
 function clearCalculator() {
+  const activePanel = document.querySelector(".calculator-section.active");
+  if (activePanel?.id === "basicCalculator") {
+    resetBasicCalculator();
+    updateBasicCalculatorDisplay();
+    updateCalculatorResult();
+    return;
+  }
   document.querySelectorAll(".calculator-section.active [data-calculator-input]").forEach((input) => {
     if (input.tagName === "SELECT") return;
     input.value = "";
@@ -1907,19 +1922,17 @@ function clearCalculator() {
 function updateCalculatorResult() {
   const activePanel = document.querySelector(".calculator-section.active");
   if (!activePanel) return;
+  document.getElementById("calculatorToolResult").hidden = activePanel.id === "basicCalculator";
+  if (activePanel.id === "basicCalculator") {
+    updateBasicCalculatorDisplay();
+    return;
+  }
   const result = calculateProgressHelper(activePanel.id);
   document.getElementById("calculatorResult").textContent = result;
 }
 
 function calculateProgressHelper(panelId) {
   const value = (name) => parseProgressNumber(document.querySelector(`[data-calculator-input="${name}"]`)?.value);
-  if (panelId === "basicCalculator") {
-    const first = value("basicA");
-    const second = value("basicB");
-    const operator = document.querySelector('[data-calculator-input="basicOperator"]')?.value || "+";
-    const result = operator === "+" ? first + second : operator === "-" ? first - second : operator === "*" ? first * second : second ? first / second : 0;
-    return formatNumber(result);
-  }
   if (panelId === "areaCalculator") {
     const gross = value("areaWidth") * value("areaLength");
     return `${formatNumber(Math.max(gross - value("areaDeduction"), 0))} m²`;
@@ -1938,6 +1951,123 @@ function calculateProgressHelper(panelId) {
     return formatCurrency(value("amountQuantity") * value("amountUnitPrice"));
   }
   return "0";
+}
+
+function pressCalculatorKey(key) {
+  if (!key) return;
+  if (key === "clear") {
+    resetBasicCalculator();
+  } else if (key === "backspace") {
+    backspaceBasicCalculator();
+  } else if (key === "sign") {
+    toggleBasicCalculatorSign();
+  } else if (key === "equals") {
+    finishBasicCalculatorOperation();
+  } else if (/^\d$/.test(key) || key === ".") {
+    inputBasicCalculatorDigit(key);
+  } else if (["+", "-", "*", "/"].includes(key)) {
+    chooseBasicCalculatorOperator(key);
+  }
+  updateCalculatorResult();
+}
+
+function handleCalculatorKeyboard(event) {
+  if (document.getElementById("calculatorModal").hidden) return;
+  if (document.querySelector(".calculator-section.active")?.id !== "basicCalculator") return;
+  const keyMap = {
+    Enter: "equals",
+    "=": "equals",
+    Backspace: "backspace",
+    Escape: "clear",
+    ",": "."
+  };
+  const key = keyMap[event.key] || event.key;
+  if (/^\d$/.test(key) || [".", "+", "-", "*", "/", "equals", "backspace", "clear"].includes(key)) {
+    event.preventDefault();
+    pressCalculatorKey(key);
+  }
+}
+
+function resetBasicCalculator() {
+  calculatorDisplay = "0";
+  calculatorStoredValue = null;
+  calculatorPendingOperator = "";
+  calculatorWaitingForOperand = false;
+}
+
+function inputBasicCalculatorDigit(key) {
+  if (calculatorWaitingForOperand) {
+    calculatorDisplay = key === "." ? "0." : key;
+    calculatorWaitingForOperand = false;
+    return;
+  }
+  if (key === "." && calculatorDisplay.includes(".")) return;
+  if (calculatorDisplay === "0" && key !== ".") {
+    calculatorDisplay = key;
+    return;
+  }
+  calculatorDisplay += key;
+}
+
+function backspaceBasicCalculator() {
+  if (calculatorWaitingForOperand) return;
+  calculatorDisplay = calculatorDisplay.length > 1 ? calculatorDisplay.slice(0, -1) : "0";
+}
+
+function toggleBasicCalculatorSign() {
+  if (calculatorDisplay === "0") return;
+  calculatorDisplay = calculatorDisplay.startsWith("-") ? calculatorDisplay.slice(1) : `-${calculatorDisplay}`;
+}
+
+function chooseBasicCalculatorOperator(operator) {
+  const inputValue = parseCalculatorDisplay();
+  if (calculatorPendingOperator && !calculatorWaitingForOperand) {
+    const result = performBasicCalculation(calculatorStoredValue, inputValue, calculatorPendingOperator);
+    calculatorStoredValue = result;
+    calculatorDisplay = formatCalculatorExpressionValue(result);
+  } else {
+    calculatorStoredValue = inputValue;
+  }
+  calculatorPendingOperator = operator;
+  calculatorWaitingForOperand = true;
+}
+
+function finishBasicCalculatorOperation() {
+  if (!calculatorPendingOperator || calculatorStoredValue === null) return;
+  const result = performBasicCalculation(calculatorStoredValue, parseCalculatorDisplay(), calculatorPendingOperator);
+  calculatorDisplay = formatCalculatorExpressionValue(result);
+  calculatorStoredValue = null;
+  calculatorPendingOperator = "";
+  calculatorWaitingForOperand = true;
+}
+
+function performBasicCalculation(first, second, operator) {
+  const result = operator === "+" ? first + second : operator === "-" ? first - second : operator === "*" ? first * second : second ? first / second : 0;
+  return Number.isFinite(result) ? result : 0;
+}
+
+function parseCalculatorDisplay() {
+  return Number(String(calculatorDisplay).replace(",", ".")) || 0;
+}
+
+function updateBasicCalculatorDisplay() {
+  const expression = document.getElementById("basicCalculatorExpression");
+  const screen = document.getElementById("basicCalculatorScreen");
+  if (expression) expression.textContent = calculatorStoredValue !== null && calculatorPendingOperator ? `${formatCalculatorValue(calculatorStoredValue)} ${operatorLabel(calculatorPendingOperator)}` : "\u00a0";
+  if (screen) screen.textContent = String(calculatorDisplay).replace(".", ",");
+}
+
+function operatorLabel(operator) {
+  return { "+": "+", "-": "−", "*": "×", "/": "÷" }[operator] || operator;
+}
+
+function formatCalculatorValue(value) {
+  return formatNumber(value);
+}
+
+function formatCalculatorExpressionValue(value) {
+  const rounded = Math.round((Number(value) + Number.EPSILON) * 100000000) / 100000000;
+  return String(rounded);
 }
 
 function editActiveReportFromModal() {

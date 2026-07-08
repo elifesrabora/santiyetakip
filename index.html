@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Saha Defteri</title>
-    <link rel="stylesheet" href="styles.css?v=20260708-progress-calculator" />
+    <link rel="stylesheet" href="styles.css?v=20260709-calculator-polish" />
   </head>
   <body>
     <div class="app-shell">
@@ -764,22 +764,35 @@
           <button class="site-tab" type="button" data-calculator-panel="rebarCalculator">Demir kg</button>
           <button class="site-tab" type="button" data-calculator-panel="amountCalculator">Tutar</button>
         </div>
-        <div class="calculator-result">
+        <div class="calculator-result" id="calculatorToolResult">
           <span>Sonuç</span>
           <strong id="calculatorResult">0</strong>
         </div>
         <section class="calculator-section active" id="basicCalculator">
-          <div class="calculator-grid">
-            <label>Birinci sayı<input data-calculator-input="basicA" type="number" step="0.01" /></label>
-            <label>İşlem
-              <select data-calculator-input="basicOperator">
-                <option value="+">Toplama</option>
-                <option value="-">Çıkarma</option>
-                <option value="*">Çarpma</option>
-                <option value="/">Bölme</option>
-              </select>
-            </label>
-            <label>İkinci sayı<input data-calculator-input="basicB" type="number" step="0.01" /></label>
+          <div class="real-calculator">
+            <div class="calculator-expression" id="basicCalculatorExpression">&nbsp;</div>
+            <div class="calculator-screen" id="basicCalculatorScreen">0</div>
+            <div class="calculator-keypad" aria-label="Hesap makinesi tuşları">
+              <button type="button" data-calc-key="clear">AC</button>
+              <button type="button" data-calc-key="backspace">⌫</button>
+              <button type="button" data-calc-key="sign">±</button>
+              <button class="operator-key" type="button" data-calc-key="/">÷</button>
+              <button type="button" data-calc-key="7">7</button>
+              <button type="button" data-calc-key="8">8</button>
+              <button type="button" data-calc-key="9">9</button>
+              <button class="operator-key" type="button" data-calc-key="*">×</button>
+              <button type="button" data-calc-key="4">4</button>
+              <button type="button" data-calc-key="5">5</button>
+              <button type="button" data-calc-key="6">6</button>
+              <button class="operator-key" type="button" data-calc-key="-">−</button>
+              <button type="button" data-calc-key="1">1</button>
+              <button type="button" data-calc-key="2">2</button>
+              <button type="button" data-calc-key="3">3</button>
+              <button class="operator-key" type="button" data-calc-key="+">+</button>
+              <button class="wide-key" type="button" data-calc-key="0">0</button>
+              <button type="button" data-calc-key=".">.</button>
+              <button class="equals-key" type="button" data-calc-key="equals">=</button>
+            </div>
           </div>
         </section>
         <section class="calculator-section" id="areaCalculator">
@@ -832,6 +845,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=20260708-progress-calculator"></script>
+    <script src="app.js?v=20260709-calculator-polish"></script>
   </body>
 </html>

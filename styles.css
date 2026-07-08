@@ -957,6 +957,72 @@ textarea {
   gap: 12px;
 }
 
+.real-calculator {
+  display: grid;
+  gap: 10px;
+  max-width: 340px;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f7f9f7;
+}
+
+.calculator-expression {
+  min-height: 22px;
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.calculator-screen {
+  min-height: 72px;
+  border-radius: 8px;
+  padding: 18px;
+  background: #17211c;
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 800;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.calculator-keypad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calculator-keypad button {
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.calculator-keypad button:hover {
+  border-color: var(--accent);
+}
+
+.calculator-keypad .operator-key {
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+.calculator-keypad .equals-key {
+  background: var(--accent);
+  color: #fff;
+}
+
+.wide-key {
+  grid-column: span 2;
+}
+
 .tiny-button {
   min-width: 34px;
   height: 34px;
