@@ -556,6 +556,12 @@ button {
   color: var(--accent);
 }
 
+.calculator-open-button {
+  margin-left: auto;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .site-detail {
   display: grid;
   gap: 16px;
@@ -905,6 +911,50 @@ textarea {
 
 .modal-actions {
   justify-content: flex-end;
+}
+
+.calculator-panel {
+  width: min(680px, 100%);
+}
+
+.calculator-tabs {
+  margin-bottom: -4px;
+}
+
+.calculator-result {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--surface-2);
+}
+
+.calculator-result span {
+  color: var(--muted);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.calculator-result strong {
+  color: var(--accent);
+  font-size: 2rem;
+  overflow-wrap: anywhere;
+}
+
+.calculator-section {
+  display: none;
+}
+
+.calculator-section.active {
+  display: block;
+}
+
+.calculator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
 }
 
 .tiny-button {

@@ -185,6 +185,19 @@ document.getElementById("editReportFromModal").addEventListener("click", editAct
 document.getElementById("reportModal").addEventListener("click", (event) => {
   if (event.target.id === "reportModal") closeReportModal();
 });
+document.getElementById("openProgressCalculator").addEventListener("click", openCalculatorModal);
+document.getElementById("closeCalculatorModal").addEventListener("click", closeCalculatorModal);
+document.getElementById("calculatorModal").addEventListener("click", (event) => {
+  if (event.target.id === "calculatorModal") closeCalculatorModal();
+});
+document.querySelectorAll("[data-calculator-panel]").forEach((button) => {
+  button.addEventListener("click", () => switchCalculatorPanel(button.dataset.calculatorPanel));
+});
+document.querySelectorAll("[data-calculator-input]").forEach((input) => {
+  input.addEventListener("input", updateCalculatorResult);
+  input.addEventListener("change", updateCalculatorResult);
+});
+document.getElementById("clearCalculator").addEventListener("click", clearCalculator);
 
 document.getElementById("scriptUrl").value = settings.scriptUrl || "";
 document.getElementById("settingsForm").addEventListener("submit", (event) => {
@@ -1862,6 +1875,69 @@ function openReportModal(id) {
 function closeReportModal() {
   activeReportModalId = "";
   document.getElementById("reportModal").hidden = true;
+}
+
+function openCalculatorModal() {
+  document.getElementById("calculatorModal").hidden = false;
+  updateCalculatorResult();
+}
+
+function closeCalculatorModal() {
+  document.getElementById("calculatorModal").hidden = true;
+}
+
+function switchCalculatorPanel(panelId) {
+  document.querySelectorAll("[data-calculator-panel]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.calculatorPanel === panelId);
+  });
+  document.querySelectorAll(".calculator-section").forEach((section) => {
+    section.classList.toggle("active", section.id === panelId);
+  });
+  updateCalculatorResult();
+}
+
+function clearCalculator() {
+  document.querySelectorAll(".calculator-section.active [data-calculator-input]").forEach((input) => {
+    if (input.tagName === "SELECT") return;
+    input.value = "";
+  });
+  updateCalculatorResult();
+}
+
+function updateCalculatorResult() {
+  const activePanel = document.querySelector(".calculator-section.active");
+  if (!activePanel) return;
+  const result = calculateProgressHelper(activePanel.id);
+  document.getElementById("calculatorResult").textContent = result;
+}
+
+function calculateProgressHelper(panelId) {
+  const value = (name) => parseProgressNumber(document.querySelector(`[data-calculator-input="${name}"]`)?.value);
+  if (panelId === "basicCalculator") {
+    const first = value("basicA");
+    const second = value("basicB");
+    const operator = document.querySelector('[data-calculator-input="basicOperator"]')?.value || "+";
+    const result = operator === "+" ? first + second : operator === "-" ? first - second : operator === "*" ? first * second : second ? first / second : 0;
+    return formatNumber(result);
+  }
+  if (panelId === "areaCalculator") {
+    const gross = value("areaWidth") * value("areaLength");
+    return `${formatNumber(Math.max(gross - value("areaDeduction"), 0))} m²`;
+  }
+  if (panelId === "volumeCalculator") {
+    const count = value("volumeCount") || 1;
+    const gross = count * value("volumeWidth") * value("volumeLength") * value("volumeHeight");
+    return `${formatNumber(Math.max(gross - value("volumeDeduction"), 0))} m³`;
+  }
+  if (panelId === "rebarCalculator") {
+    const kgm = value("rebarDiameter");
+    const gross = value("rebarCount") * value("rebarLength") * kgm;
+    return `${formatNumber(Math.max(gross - value("rebarDeduction"), 0))} kg`;
+  }
+  if (panelId === "amountCalculator") {
+    return formatCurrency(value("amountQuantity") * value("amountUnitPrice"));
+  }
+  return "0";
 }
 
 function editActiveReportFromModal() {
