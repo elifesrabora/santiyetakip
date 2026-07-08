@@ -20,6 +20,27 @@ const initialState = {
     prices: {},
     rows: []
   },
+  wallProgress: {
+    projectName: "",
+    progressNo: "",
+    date: "",
+    unitPrice: "",
+    rows: []
+  },
+  plasterProgress: {
+    projectName: "",
+    progressNo: "",
+    date: "",
+    prices: {},
+    groups: {}
+  },
+  drywallProgress: {
+    projectName: "",
+    progressNo: "",
+    date: "",
+    prices: {},
+    groups: {}
+  },
   orders: [],
   issues: []
 };
@@ -49,6 +70,31 @@ const rebarDiameters = [
   { diameter: "Ø28", kgm: 4.83 },
   { diameter: "Ø32", kgm: 6.313 }
 ];
+
+const areaProgressModules = {
+  wallProgress: {
+    type: "single",
+    totalsId: "wallProgressTotals",
+    groups: [{ key: "wall", title: "Duvar", rowsId: "wallProgressRows" }]
+  },
+  plasterProgress: {
+    type: "grouped",
+    totalsId: "plasterProgressTotals",
+    groups: [
+      { key: "rough", title: "Kara sıva", rowsId: "plasterRoughRows" },
+      { key: "gypsum", title: "Alçı sıva", rowsId: "plasterGypsumRows" }
+    ]
+  },
+  drywallProgress: {
+    type: "grouped",
+    totalsId: "drywallProgressTotals",
+    groups: [
+      { key: "ceiling", title: "Alt tavan", rowsId: "drywallCeilingRows" },
+      { key: "vertical", title: "Düşey yüzler", rowsId: "drywallVerticalRows" },
+      { key: "partition", title: "Bölme duvar", rowsId: "drywallPartitionRows" }
+    ]
+  }
+};
 
 const views = {
   overview: "Genel Bakış",
@@ -116,6 +162,19 @@ document.getElementById("steelProgressRows").addEventListener("click", handleSte
 document.getElementById("steelPriceCards").addEventListener("input", handleSteelPriceInput);
 document.querySelectorAll("#steelProgressPanel [id^='steelProgress']").forEach((input) => {
   input.addEventListener("input", handleSteelProgressMetaInput);
+});
+document.querySelectorAll("[data-area-progress-meta]").forEach((input) => {
+  input.addEventListener("input", handleAreaProgressMetaInput);
+});
+document.querySelectorAll("[data-area-price]").forEach((input) => {
+  input.addEventListener("input", handleAreaProgressPriceInput);
+});
+document.querySelectorAll("[data-area-rows]").forEach((tbody) => {
+  tbody.addEventListener("input", handleAreaProgressRowInput);
+  tbody.addEventListener("click", handleAreaProgressRowClick);
+});
+document.querySelectorAll("[data-add-area-row]").forEach((button) => {
+  button.addEventListener("click", () => addAreaProgressRow(button.dataset.addAreaRow, button.dataset.areaGroup));
 });
 document.getElementById("closeReportModal").addEventListener("click", closeReportModal);
 document.getElementById("downloadReport").addEventListener("click", downloadActiveReport);
@@ -439,6 +498,9 @@ function normalizeState(value) {
     prePlans: Array.isArray(value.prePlans) ? value.prePlans : [],
     concreteProgress: normalizeConcreteProgress(value.concreteProgress),
     steelProgress: normalizeSteelProgress(value.steelProgress),
+    wallProgress: normalizeSingleAreaProgress(value.wallProgress),
+    plasterProgress: normalizeGroupedAreaProgress(value.plasterProgress, areaProgressModules.plasterProgress.groups),
+    drywallProgress: normalizeGroupedAreaProgress(value.drywallProgress, areaProgressModules.drywallProgress.groups),
     orders: Array.isArray(value.orders) ? value.orders : [],
     issues: Array.isArray(value.issues) ? value.issues : []
   };
@@ -495,6 +557,44 @@ function normalizeSteelProgressRow(row = {}) {
   };
 }
 
+function normalizeSingleAreaProgress(value = {}) {
+  return {
+    projectName: value.projectName || "",
+    progressNo: value.progressNo || "",
+    date: value.date || "",
+    unitPrice: value.unitPrice || "",
+    rows: Array.isArray(value.rows) ? value.rows.map(normalizeAreaProgressRow) : []
+  };
+}
+
+function normalizeGroupedAreaProgress(value = {}, groups = []) {
+  return {
+    projectName: value.projectName || "",
+    progressNo: value.progressNo || "",
+    date: value.date || "",
+    prices: groups.reduce((prices, group) => {
+      prices[group.key] = value.prices?.[group.key] || "";
+      return prices;
+    }, {}),
+    groups: groups.reduce((items, group) => {
+      items[group.key] = Array.isArray(value.groups?.[group.key]) ? value.groups[group.key].map(normalizeAreaProgressRow) : [];
+      return items;
+    }, {})
+  };
+}
+
+function normalizeAreaProgressRow(row = {}) {
+  return {
+    id: row.id || crypto.randomUUID(),
+    location: row.location || "",
+    floor: row.floor || "",
+    width: row.width || "",
+    length: row.length || "",
+    deduction: row.deduction || "",
+    previous: row.previous || ""
+  };
+}
+
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
 }
@@ -530,6 +630,9 @@ function render() {
   renderMaterialSummary();
   renderConcreteProgress();
   renderSteelProgress();
+  renderAreaProgress("wallProgress");
+  renderAreaProgress("plasterProgress");
+  renderAreaProgress("drywallProgress");
   renderSiteDetail();
 }
 
@@ -1236,6 +1339,214 @@ function renderSteelProgressTotals() {
       </article>
     `;
   }).join("");
+}
+
+function renderAreaProgress(moduleKey) {
+  const config = areaProgressModules[moduleKey];
+  const progress = state[moduleKey];
+  if (!config || !progress) return;
+
+  setAreaMetaValue(moduleKey, "ProjectName", progress.projectName || "");
+  setAreaMetaValue(moduleKey, "No", progress.progressNo || "");
+  setAreaMetaValue(moduleKey, "Date", progress.date || today);
+
+  if (config.type === "single") {
+    const unitPriceInput = document.getElementById(`${moduleKey}UnitPrice`);
+    if (unitPriceInput) unitPriceInput.value = progress.unitPrice || "";
+  } else {
+    config.groups.forEach((group) => {
+      const priceInput = document.querySelector(`[data-area-price="${moduleKey}"][data-area-group="${group.key}"]`);
+      if (priceInput) priceInput.value = progress.prices[group.key] || "";
+    });
+  }
+
+  config.groups.forEach((group) => renderAreaProgressRows(moduleKey, group.key));
+  renderAreaProgressTotals(moduleKey);
+}
+
+function setAreaMetaValue(moduleKey, suffix, value) {
+  const input = document.getElementById(`${moduleKey}${suffix}`);
+  if (input) input.value = value;
+}
+
+function renderAreaProgressRows(moduleKey, groupKey) {
+  const rows = getAreaRows(moduleKey, groupKey);
+  const tbody = document.querySelector(`[data-area-rows="${moduleKey}"][data-area-group="${groupKey}"]`);
+  if (!tbody) return;
+  if (!rows.length) {
+    rows.push(createAreaProgressRow());
+    saveState();
+  }
+  tbody.innerHTML = "";
+  rows.forEach((row) => tbody.append(areaProgressRowElement(moduleKey, groupKey, row)));
+}
+
+function areaProgressRowElement(moduleKey, groupKey, row) {
+  const tr = document.createElement("tr");
+  tr.dataset.areaRow = row.id;
+  tr.dataset.areaModule = moduleKey;
+  tr.dataset.areaGroup = groupKey;
+  tr.innerHTML = `
+    <td><input data-area-field="location" placeholder="Örn. Daire 1 salon" value="${escapeHtml(row.location)}" /></td>
+    <td><input data-area-field="floor" value="${escapeHtml(row.floor)}" /></td>
+    <td><input data-area-field="width" type="number" min="0" step="0.01" value="${escapeHtml(row.width)}" /></td>
+    <td><input data-area-field="length" type="number" min="0" step="0.01" value="${escapeHtml(row.length)}" /></td>
+    <td><input class="calculated-input" data-area-calc="gross" readonly /></td>
+    <td><input data-area-field="deduction" type="number" min="0" step="0.01" value="${escapeHtml(row.deduction)}" /></td>
+    <td><input class="calculated-input" data-area-calc="net" readonly /></td>
+    <td><input data-area-field="previous" type="number" min="0" step="0.01" value="${escapeHtml(row.previous)}" /></td>
+    <td><input class="calculated-input" data-area-calc="current" readonly /></td>
+    <td><input class="calculated-input currency-input" data-area-calc="amount" readonly /></td>
+    <td><button class="tiny-button" type="button" title="Satırı sil" data-delete-area-row="${row.id}">x</button></td>
+  `;
+  updateAreaProgressRowDisplay(tr, moduleKey, groupKey, row);
+  return tr;
+}
+
+function createAreaProgressRow() {
+  return normalizeAreaProgressRow({ id: crypto.randomUUID() });
+}
+
+function getAreaRows(moduleKey, groupKey) {
+  const config = areaProgressModules[moduleKey];
+  if (config.type === "single") return state[moduleKey].rows;
+  if (!state[moduleKey].groups[groupKey]) state[moduleKey].groups[groupKey] = [];
+  return state[moduleKey].groups[groupKey];
+}
+
+function getAreaUnitPrice(moduleKey, groupKey) {
+  const config = areaProgressModules[moduleKey];
+  if (config.type === "single") return state[moduleKey].unitPrice;
+  return state[moduleKey].prices[groupKey];
+}
+
+function handleAreaProgressMetaInput(event) {
+  const moduleKey = event.target.dataset.areaProgressMeta;
+  const field = event.target.dataset.areaMetaField;
+  if (!moduleKey || !field || !state[moduleKey]) return;
+  state[moduleKey][field] = event.target.value;
+  saveState();
+  if (field === "unitPrice") renderAreaProgressRowsOnly(moduleKey);
+}
+
+function handleAreaProgressPriceInput(event) {
+  const moduleKey = event.target.dataset.areaPrice;
+  const groupKey = event.target.dataset.areaGroup;
+  if (!moduleKey || !groupKey || !state[moduleKey]?.prices) return;
+  state[moduleKey].prices[groupKey] = event.target.value;
+  saveState();
+  renderAreaProgressRowsOnly(moduleKey);
+}
+
+function handleAreaProgressRowInput(event) {
+  const field = event.target.dataset.areaField;
+  if (!field) return;
+  const tr = event.target.closest("[data-area-row]");
+  const row = getAreaRows(tr.dataset.areaModule, tr.dataset.areaGroup).find((item) => item.id === tr.dataset.areaRow);
+  if (!row) return;
+  row[field] = event.target.value;
+  saveState();
+  updateAreaProgressRowDisplay(tr, tr.dataset.areaModule, tr.dataset.areaGroup, row);
+  renderAreaProgressTotals(tr.dataset.areaModule);
+}
+
+function handleAreaProgressRowClick(event) {
+  const button = event.target.closest("[data-delete-area-row]");
+  if (!button) return;
+  const tbody = event.currentTarget;
+  const moduleKey = tbody.dataset.areaRows;
+  const groupKey = tbody.dataset.areaGroup;
+  const rows = getAreaRows(moduleKey, groupKey);
+  const nextRows = rows.filter((row) => row.id !== button.dataset.deleteAreaRow);
+  if (areaProgressModules[moduleKey].type === "single") {
+    state[moduleKey].rows = nextRows.length ? nextRows : [createAreaProgressRow()];
+  } else {
+    state[moduleKey].groups[groupKey] = nextRows.length ? nextRows : [createAreaProgressRow()];
+  }
+  saveState();
+  renderAreaProgressRows(moduleKey, groupKey);
+  renderAreaProgressTotals(moduleKey);
+}
+
+function addAreaProgressRow(moduleKey, groupKey) {
+  getAreaRows(moduleKey, groupKey).push(createAreaProgressRow());
+  saveState();
+  renderAreaProgressRows(moduleKey, groupKey);
+  renderAreaProgressTotals(moduleKey);
+}
+
+function renderAreaProgressRowsOnly(moduleKey) {
+  areaProgressModules[moduleKey].groups.forEach((group) => renderAreaProgressRows(moduleKey, group.key));
+  renderAreaProgressTotals(moduleKey);
+}
+
+function updateAreaProgressRowDisplay(tr, moduleKey, groupKey, row) {
+  const totals = calculateAreaProgressRow(row, getAreaUnitPrice(moduleKey, groupKey));
+  tr.querySelector('[data-area-calc="gross"]').value = formatNumber(totals.gross);
+  tr.querySelector('[data-area-calc="net"]').value = formatNumber(totals.net);
+  tr.querySelector('[data-area-calc="current"]').value = formatNumber(totals.current);
+  tr.querySelector('[data-area-calc="amount"]').value = formatCurrency(totals.amount);
+}
+
+function calculateAreaProgressRow(row, unitPrice) {
+  const gross = parseProgressNumber(row.width) * parseProgressNumber(row.length);
+  const net = Math.max(gross - parseProgressNumber(row.deduction), 0);
+  const current = Math.max(net - parseProgressNumber(row.previous), 0);
+  const amount = current * parseProgressNumber(unitPrice);
+  return { gross, net, current, amount };
+}
+
+function renderAreaProgressTotals(moduleKey) {
+  const config = areaProgressModules[moduleKey];
+  const groupTotals = config.groups.map((group) => {
+    const totals = getAreaRows(moduleKey, group.key).reduce((acc, row) => {
+      const rowTotals = calculateAreaProgressRow(row, getAreaUnitPrice(moduleKey, group.key));
+      acc.gross += rowTotals.gross;
+      acc.net += rowTotals.net;
+      acc.current += rowTotals.current;
+      acc.amount += rowTotals.amount;
+      return acc;
+    }, { gross: 0, net: 0, current: 0, amount: 0 });
+    return { ...group, totals };
+  });
+
+  const grand = groupTotals.reduce((acc, group) => {
+    acc.gross += group.totals.gross;
+    acc.net += group.totals.net;
+    acc.current += group.totals.current;
+    acc.amount += group.totals.amount;
+    return acc;
+  }, { gross: 0, net: 0, current: 0, amount: 0 });
+
+  const target = document.getElementById(config.totalsId);
+  if (!target) return;
+  if (config.type === "single") {
+    target.className = "progress-summary-grid";
+    target.innerHTML = `
+      ${summaryCardHtml("Toplam brüt m²", `${formatNumber(grand.gross)} m²`)}
+      ${summaryCardHtml("Toplam net m²", `${formatNumber(grand.net)} m²`)}
+      ${summaryCardHtml("Bu hakediş toplam m²", `${formatNumber(grand.current)} m²`)}
+      ${summaryCardHtml("Genel toplam tutar", formatCurrency(grand.amount))}
+    `;
+    return;
+  }
+
+  target.className = "progress-class-summary area-total-summary";
+  target.innerHTML = groupTotals.map((group) => `
+    <article class="progress-class-card">
+      <strong>${group.title}</strong>
+      <span>Toplam net: ${formatNumber(group.totals.net)} m²</span>
+      <span>Bu hakediş: ${formatNumber(group.totals.current)} m²</span>
+      <b>${formatCurrency(group.totals.amount)}</b>
+    </article>
+  `).join("") + `
+    <article class="progress-class-card total-card">
+      <strong>Genel toplam</strong>
+      <span>Toplam net: ${formatNumber(grand.net)} m²</span>
+      <span>Bu hakediş: ${formatNumber(grand.current)} m²</span>
+      <b>${formatCurrency(grand.amount)}</b>
+    </article>
+  `;
 }
 
 function itemCard({ title, meta, body, foot, badge, collection, id }) {

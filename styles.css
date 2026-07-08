@@ -324,7 +324,7 @@ button {
 
 .progress-meta-grid {
   display: grid;
-  grid-template-columns: minmax(240px, 1.4fr) minmax(140px, 0.6fr) minmax(160px, 0.7fr);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 }
 
@@ -340,6 +340,10 @@ button {
 
 .steel-progress-table {
   min-width: 1580px;
+}
+
+.area-progress-table {
+  min-width: 1280px;
 }
 
 .progress-table th {
@@ -398,6 +402,31 @@ button {
 
 .rebar-price-card input {
   margin-top: 4px;
+}
+
+.area-progress-group {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.compact-header {
+  align-items: end;
+}
+
+.compact-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.area-total-summary {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.total-card {
+  border-color: var(--accent);
+  background: #f7fbf8;
 }
 
 .progress-summary-grid {

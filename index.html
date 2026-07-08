@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Saha Defteri</title>
-    <link rel="stylesheet" href="styles.css?v=20260707-steel-progress" />
+    <link rel="stylesheet" href="styles.css?v=20260708-area-progress" />
   </head>
   <body>
     <div class="app-shell">
@@ -364,6 +364,9 @@
             <div class="record-tabs" aria-label="Hakediş türü">
               <button class="site-tab active" type="button" data-progress-panel="concreteProgressPanel">Beton</button>
               <button class="site-tab" type="button" data-progress-panel="steelProgressPanel">Demir</button>
+              <button class="site-tab" type="button" data-progress-panel="wallProgressPanel">Duvar</button>
+              <button class="site-tab" type="button" data-progress-panel="plasterProgressPanel">Sıva</button>
+              <button class="site-tab" type="button" data-progress-panel="drywallProgressPanel">Alçıpan</button>
             </div>
             <section class="panel progress-print-area progress-panel active" id="concreteProgressPanel">
               <div class="panel-header">
@@ -445,6 +448,240 @@
               <section class="progress-summary-grid" id="steelProgressTotals"></section>
               <section class="progress-class-summary" id="steelDiameterSummary"></section>
             </section>
+            <section class="panel progress-print-area progress-panel" id="wallProgressPanel">
+              <div class="panel-header">
+                <h2>Duvar Hakediş</h2>
+                <span>Tuğla duvar m² ve tutar</span>
+              </div>
+              <div class="progress-meta-grid">
+                <label>Proje adı<input id="wallProgressProjectName" data-area-progress-meta="wallProgress" data-area-meta-field="projectName" placeholder="Örn. Sahil Apartmanı" /></label>
+                <label>Hakediş no<input id="wallProgressNo" data-area-progress-meta="wallProgress" data-area-meta-field="progressNo" type="number" min="1" step="1" /></label>
+                <label>Tarih<input id="wallProgressDate" data-area-progress-meta="wallProgress" data-area-meta-field="date" type="date" /></label>
+                <label>Birim fiyat ₺/m²<input id="wallProgressUnitPrice" data-area-progress-meta="wallProgress" data-area-meta-field="unitPrice" type="number" min="0" step="0.01" /></label>
+              </div>
+              <div class="table-wrap progress-table-wrap">
+                <table class="progress-table area-progress-table">
+                  <thead>
+                    <tr>
+                      <th>Yapı elemanı/konum</th>
+                      <th>Kat</th>
+                      <th>En</th>
+                      <th>Boy</th>
+                      <th>Brüt m²</th>
+                      <th>Düşülen m²</th>
+                      <th>Net m²</th>
+                      <th>Önceki m²</th>
+                      <th>Bu hakediş m²</th>
+                      <th>Tutar</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="wallProgressRows" data-area-rows="wallProgress" data-area-group="wall"></tbody>
+                </table>
+              </div>
+              <div class="button-row">
+                <button class="primary-button" type="button" data-add-area-row="wallProgress" data-area-group="wall">Satır Ekle</button>
+              </div>
+              <section class="progress-summary-grid" id="wallProgressTotals"></section>
+            </section>
+            <section class="panel progress-print-area progress-panel" id="plasterProgressPanel">
+              <div class="panel-header">
+                <h2>Sıva Hakediş</h2>
+                <span>Kara sıva ve alçı sıva</span>
+              </div>
+              <div class="progress-meta-grid">
+                <label>Proje adı<input id="plasterProgressProjectName" data-area-progress-meta="plasterProgress" data-area-meta-field="projectName" placeholder="Örn. Sahil Apartmanı" /></label>
+                <label>Hakediş no<input id="plasterProgressNo" data-area-progress-meta="plasterProgress" data-area-meta-field="progressNo" type="number" min="1" step="1" /></label>
+                <label>Tarih<input id="plasterProgressDate" data-area-progress-meta="plasterProgress" data-area-meta-field="date" type="date" /></label>
+              </div>
+              <section class="rebar-price-grid">
+                <article class="rebar-price-card">
+                  <strong>Kara sıva</strong>
+                  <span>₺/m²</span>
+                  <label>Birim fiyat<input data-area-price="plasterProgress" data-area-group="rough" type="number" min="0" step="0.01" /></label>
+                </article>
+                <article class="rebar-price-card">
+                  <strong>Alçı sıva</strong>
+                  <span>₺/m²</span>
+                  <label>Birim fiyat<input data-area-price="plasterProgress" data-area-group="gypsum" type="number" min="0" step="0.01" /></label>
+                </article>
+              </section>
+              <section class="area-progress-group">
+                <div class="panel-header compact-header">
+                  <h3>Kara sıva</h3>
+                  <span>Metraj tablosu</span>
+                </div>
+                <div class="table-wrap progress-table-wrap">
+                  <table class="progress-table area-progress-table">
+                    <thead>
+                      <tr>
+                        <th>Konum</th>
+                        <th>Kat</th>
+                        <th>En</th>
+                        <th>Boy</th>
+                        <th>Brüt m²</th>
+                        <th>Düşülen m²</th>
+                        <th>Net m²</th>
+                        <th>Önceki m²</th>
+                        <th>Bu hakediş m²</th>
+                        <th>Tutar</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="plasterRoughRows" data-area-rows="plasterProgress" data-area-group="rough"></tbody>
+                  </table>
+                </div>
+                <div class="button-row">
+                  <button class="primary-button" type="button" data-add-area-row="plasterProgress" data-area-group="rough">Kara Sıva Satırı Ekle</button>
+                </div>
+              </section>
+              <section class="area-progress-group">
+                <div class="panel-header compact-header">
+                  <h3>Alçı sıva</h3>
+                  <span>Metraj tablosu</span>
+                </div>
+                <div class="table-wrap progress-table-wrap">
+                  <table class="progress-table area-progress-table">
+                    <thead>
+                      <tr>
+                        <th>Konum</th>
+                        <th>Kat</th>
+                        <th>En</th>
+                        <th>Boy</th>
+                        <th>Brüt m²</th>
+                        <th>Düşülen m²</th>
+                        <th>Net m²</th>
+                        <th>Önceki m²</th>
+                        <th>Bu hakediş m²</th>
+                        <th>Tutar</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="plasterGypsumRows" data-area-rows="plasterProgress" data-area-group="gypsum"></tbody>
+                  </table>
+                </div>
+                <div class="button-row">
+                  <button class="primary-button" type="button" data-add-area-row="plasterProgress" data-area-group="gypsum">Alçı Sıva Satırı Ekle</button>
+                </div>
+              </section>
+              <section class="progress-class-summary" id="plasterProgressTotals"></section>
+            </section>
+            <section class="panel progress-print-area progress-panel" id="drywallProgressPanel">
+              <div class="panel-header">
+                <h2>Alçıpan Hakediş</h2>
+                <span>Alt tavan, düşey yüzler ve bölme duvar</span>
+              </div>
+              <div class="progress-meta-grid">
+                <label>Proje adı<input id="drywallProgressProjectName" data-area-progress-meta="drywallProgress" data-area-meta-field="projectName" placeholder="Örn. Sahil Apartmanı" /></label>
+                <label>Hakediş no<input id="drywallProgressNo" data-area-progress-meta="drywallProgress" data-area-meta-field="progressNo" type="number" min="1" step="1" /></label>
+                <label>Tarih<input id="drywallProgressDate" data-area-progress-meta="drywallProgress" data-area-meta-field="date" type="date" /></label>
+              </div>
+              <section class="rebar-price-grid">
+                <article class="rebar-price-card">
+                  <strong>Alt tavan</strong>
+                  <span>₺/m²</span>
+                  <label>Birim fiyat<input data-area-price="drywallProgress" data-area-group="ceiling" type="number" min="0" step="0.01" /></label>
+                </article>
+                <article class="rebar-price-card">
+                  <strong>Düşey yüzler</strong>
+                  <span>₺/m²</span>
+                  <label>Birim fiyat<input data-area-price="drywallProgress" data-area-group="vertical" type="number" min="0" step="0.01" /></label>
+                </article>
+                <article class="rebar-price-card">
+                  <strong>Bölme duvar</strong>
+                  <span>₺/m²</span>
+                  <label>Birim fiyat<input data-area-price="drywallProgress" data-area-group="partition" type="number" min="0" step="0.01" /></label>
+                </article>
+              </section>
+              <section class="area-progress-group">
+                <div class="panel-header compact-header">
+                  <h3>Alt tavan</h3>
+                  <span>Metraj tablosu</span>
+                </div>
+                <div class="table-wrap progress-table-wrap">
+                  <table class="progress-table area-progress-table">
+                    <thead>
+                      <tr>
+                        <th>Konum</th>
+                        <th>Kat</th>
+                        <th>En</th>
+                        <th>Boy</th>
+                        <th>Brüt m²</th>
+                        <th>Düşülen m²</th>
+                        <th>Net m²</th>
+                        <th>Önceki m²</th>
+                        <th>Bu hakediş m²</th>
+                        <th>Tutar</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="drywallCeilingRows" data-area-rows="drywallProgress" data-area-group="ceiling"></tbody>
+                  </table>
+                </div>
+                <div class="button-row">
+                  <button class="primary-button" type="button" data-add-area-row="drywallProgress" data-area-group="ceiling">Alt Tavan Satırı Ekle</button>
+                </div>
+              </section>
+              <section class="area-progress-group">
+                <div class="panel-header compact-header">
+                  <h3>Düşey yüzler</h3>
+                  <span>Metraj tablosu</span>
+                </div>
+                <div class="table-wrap progress-table-wrap">
+                  <table class="progress-table area-progress-table">
+                    <thead>
+                      <tr>
+                        <th>Konum</th>
+                        <th>Kat</th>
+                        <th>En</th>
+                        <th>Boy</th>
+                        <th>Brüt m²</th>
+                        <th>Düşülen m²</th>
+                        <th>Net m²</th>
+                        <th>Önceki m²</th>
+                        <th>Bu hakediş m²</th>
+                        <th>Tutar</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="drywallVerticalRows" data-area-rows="drywallProgress" data-area-group="vertical"></tbody>
+                  </table>
+                </div>
+                <div class="button-row">
+                  <button class="primary-button" type="button" data-add-area-row="drywallProgress" data-area-group="vertical">Düşey Yüz Satırı Ekle</button>
+                </div>
+              </section>
+              <section class="area-progress-group">
+                <div class="panel-header compact-header">
+                  <h3>Bölme duvar</h3>
+                  <span>Metraj tablosu</span>
+                </div>
+                <div class="table-wrap progress-table-wrap">
+                  <table class="progress-table area-progress-table">
+                    <thead>
+                      <tr>
+                        <th>Konum</th>
+                        <th>Kat</th>
+                        <th>En</th>
+                        <th>Boy</th>
+                        <th>Brüt m²</th>
+                        <th>Düşülen m²</th>
+                        <th>Net m²</th>
+                        <th>Önceki m²</th>
+                        <th>Bu hakediş m²</th>
+                        <th>Tutar</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="drywallPartitionRows" data-area-rows="drywallProgress" data-area-group="partition"></tbody>
+                  </table>
+                </div>
+                <div class="button-row">
+                  <button class="primary-button" type="button" data-add-area-row="drywallProgress" data-area-group="partition">Bölme Duvar Satırı Ekle</button>
+                </div>
+              </section>
+              <section class="progress-class-summary" id="drywallProgressTotals"></section>
+            </section>
           </div>
         </section>
 
@@ -509,6 +746,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=20260707-steel-progress"></script>
+    <script src="app.js?v=20260708-area-progress"></script>
   </body>
 </html>
