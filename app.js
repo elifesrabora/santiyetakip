@@ -13,6 +13,13 @@ const initialState = {
     date: "",
     rows: []
   },
+  steelProgress: {
+    projectName: "",
+    progressNo: "",
+    date: "",
+    prices: {},
+    rows: []
+  },
   orders: [],
   issues: []
 };
@@ -28,6 +35,20 @@ let editingPrePlanId = "";
 let editingOrderId = "";
 let activeWeekStart;
 let activeReportModalId = "";
+
+const rebarDiameters = [
+  { diameter: "Ø8", kgm: 0.395 },
+  { diameter: "Ø10", kgm: 0.617 },
+  { diameter: "Ø12", kgm: 0.888 },
+  { diameter: "Ø14", kgm: 1.208 },
+  { diameter: "Ø16", kgm: 1.578 },
+  { diameter: "Ø18", kgm: 1.998 },
+  { diameter: "Ø20", kgm: 2.466 },
+  { diameter: "Ø22", kgm: 2.984 },
+  { diameter: "Ø25", kgm: 3.853 },
+  { diameter: "Ø28", kgm: 4.83 },
+  { diameter: "Ø32", kgm: 6.313 }
+];
 
 const views = {
   overview: "Genel Bakış",
@@ -83,8 +104,18 @@ document.getElementById("nextWeek").addEventListener("click", () => changeWeek(7
 document.getElementById("addConcreteProgressRow").addEventListener("click", addConcreteProgressRow);
 document.getElementById("concreteProgressRows").addEventListener("input", handleConcreteProgressInput);
 document.getElementById("concreteProgressRows").addEventListener("click", handleConcreteProgressClick);
-document.querySelectorAll("#concreteProgressModule [id^='progress']").forEach((input) => {
+document.querySelectorAll("#concreteProgressPanel [id^='progress']").forEach((input) => {
   input.addEventListener("input", handleConcreteProgressMetaInput);
+});
+document.querySelectorAll("[data-progress-panel]").forEach((button) => {
+  button.addEventListener("click", () => switchProgressPanel(button.dataset.progressPanel));
+});
+document.getElementById("addSteelProgressRow").addEventListener("click", addSteelProgressRow);
+document.getElementById("steelProgressRows").addEventListener("input", handleSteelProgressInput);
+document.getElementById("steelProgressRows").addEventListener("click", handleSteelProgressClick);
+document.getElementById("steelPriceCards").addEventListener("input", handleSteelPriceInput);
+document.querySelectorAll("#steelProgressPanel [id^='steelProgress']").forEach((input) => {
+  input.addEventListener("input", handleSteelProgressMetaInput);
 });
 document.getElementById("closeReportModal").addEventListener("click", closeReportModal);
 document.getElementById("downloadReport").addEventListener("click", downloadActiveReport);
@@ -381,6 +412,15 @@ function switchOrderPanel(panelId) {
   });
 }
 
+function switchProgressPanel(panelId) {
+  document.querySelectorAll("[data-progress-panel]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.progressPanel === panelId);
+  });
+  document.querySelectorAll(".progress-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === panelId);
+  });
+}
+
 function loadState() {
   const saved = localStorage.getItem(storageKey);
   if (!saved) return structuredClone(initialState);
@@ -398,6 +438,7 @@ function normalizeState(value) {
     plans: Array.isArray(value.plans) ? value.plans : [],
     prePlans: Array.isArray(value.prePlans) ? value.prePlans : [],
     concreteProgress: normalizeConcreteProgress(value.concreteProgress),
+    steelProgress: normalizeSteelProgress(value.steelProgress),
     orders: Array.isArray(value.orders) ? value.orders : [],
     issues: Array.isArray(value.issues) ? value.issues : []
   };
@@ -425,6 +466,32 @@ function normalizeConcreteProgressRow(row = {}) {
     deduction: row.deduction || "",
     previous: row.previous || "",
     unitPrice: row.unitPrice || ""
+  };
+}
+
+function normalizeSteelProgress(value = {}) {
+  return {
+    projectName: value.projectName || "",
+    progressNo: value.progressNo || "",
+    date: value.date || "",
+    prices: rebarDiameters.reduce((prices, item) => {
+      prices[item.diameter] = value.prices?.[item.diameter] || "";
+      return prices;
+    }, {}),
+    rows: Array.isArray(value.rows) ? value.rows.map(normalizeSteelProgressRow) : []
+  };
+}
+
+function normalizeSteelProgressRow(row = {}) {
+  return {
+    id: row.id || crypto.randomUUID(),
+    element: row.element || "Kolon",
+    floor: row.floor || "",
+    diameter: row.diameter || "Ø12",
+    count: row.count || "",
+    length: row.length || "",
+    deduction: row.deduction || "",
+    previous: row.previous || ""
   };
 }
 
@@ -462,6 +529,7 @@ function render() {
   renderOverview();
   renderMaterialSummary();
   renderConcreteProgress();
+  renderSteelProgress();
   renderSiteDetail();
 }
 
@@ -996,6 +1064,178 @@ function renderConcreteProgressTotals() {
 
 function summaryCardHtml(label, value) {
   return `<article class="metric progress-summary-card"><span>${label}</span><strong>${value}</strong></article>`;
+}
+
+function renderSteelProgress() {
+  const progress = state.steelProgress;
+  document.getElementById("steelProgressProjectName").value = progress.projectName || "";
+  document.getElementById("steelProgressNo").value = progress.progressNo || "";
+  document.getElementById("steelProgressDate").value = progress.date || today;
+  renderSteelPriceCards();
+
+  const tbody = document.getElementById("steelProgressRows");
+  tbody.innerHTML = "";
+  const rows = progress.rows.length ? progress.rows : [createSteelProgressRow()];
+  if (!progress.rows.length) {
+    state.steelProgress.rows = rows;
+    saveState();
+  }
+  rows.forEach((row) => tbody.append(steelProgressRowElement(row)));
+  renderSteelProgressTotals();
+}
+
+function renderSteelPriceCards() {
+  document.getElementById("steelPriceCards").innerHTML = rebarDiameters.map((item) => `
+    <article class="rebar-price-card">
+      <strong>${item.diameter}</strong>
+      <span>${formatNumber(item.kgm)} kg/m</span>
+      <label>₺/kg<input data-steel-price="${item.diameter}" type="number" min="0" step="0.01" value="${escapeHtml(state.steelProgress.prices[item.diameter] || "")}" /></label>
+    </article>
+  `).join("");
+}
+
+function steelProgressRowElement(row) {
+  const tr = document.createElement("tr");
+  tr.dataset.steelRow = row.id;
+  tr.innerHTML = `
+    <td>${steelSelectHtml("element", ["Kolon", "Kiriş", "Döşeme", "Temel/Radye", "Perde", "Merdiven", "Diğer"], row.element)}</td>
+    <td><input data-steel-field="floor" value="${escapeHtml(row.floor)}" /></td>
+    <td>${steelSelectHtml("diameter", rebarDiameters.map((item) => item.diameter), row.diameter)}</td>
+    <td><input data-steel-field="count" type="number" min="0" step="1" value="${escapeHtml(row.count)}" /></td>
+    <td><input data-steel-field="length" type="number" min="0" step="0.01" value="${escapeHtml(row.length)}" /></td>
+    <td><input class="calculated-input" data-steel-calc="kgm" readonly /></td>
+    <td><input class="calculated-input" data-steel-calc="gross" readonly /></td>
+    <td><input data-steel-field="deduction" type="number" min="0" step="0.01" value="${escapeHtml(row.deduction)}" /></td>
+    <td><input class="calculated-input" data-steel-calc="net" readonly /></td>
+    <td><input data-steel-field="previous" type="number" min="0" step="0.01" value="${escapeHtml(row.previous)}" /></td>
+    <td><input class="calculated-input" data-steel-calc="current" readonly /></td>
+    <td><input class="calculated-input" data-steel-calc="unitPrice" readonly /></td>
+    <td><input class="calculated-input currency-input" data-steel-calc="amount" readonly /></td>
+    <td><button class="tiny-button" type="button" title="Satırı sil" data-delete-steel-row="${row.id}">x</button></td>
+  `;
+  updateSteelProgressRowDisplay(tr, row);
+  return tr;
+}
+
+function steelSelectHtml(field, options, value) {
+  return `
+    <select data-steel-field="${field}">
+      ${options.map((option) => `<option ${option === value ? "selected" : ""}>${option}</option>`).join("")}
+    </select>
+  `;
+}
+
+function createSteelProgressRow() {
+  return normalizeSteelProgressRow({ id: crypto.randomUUID() });
+}
+
+function handleSteelProgressMetaInput(event) {
+  const map = {
+    steelProgressProjectName: "projectName",
+    steelProgressNo: "progressNo",
+    steelProgressDate: "date"
+  };
+  const key = map[event.target.id];
+  if (!key) return;
+  state.steelProgress[key] = event.target.value;
+  saveState();
+}
+
+function handleSteelPriceInput(event) {
+  const diameter = event.target.dataset.steelPrice;
+  if (!diameter) return;
+  state.steelProgress.prices[diameter] = event.target.value;
+  saveState();
+  renderSteelRowsOnly();
+}
+
+function handleSteelProgressInput(event) {
+  const field = event.target.dataset.steelField;
+  if (!field) return;
+  const tr = event.target.closest("[data-steel-row]");
+  const row = state.steelProgress.rows.find((item) => item.id === tr.dataset.steelRow);
+  if (!row) return;
+  row[field] = event.target.value;
+  saveState();
+  updateSteelProgressRowDisplay(tr, row);
+  renderSteelProgressTotals();
+}
+
+function handleSteelProgressClick(event) {
+  const button = event.target.closest("[data-delete-steel-row]");
+  if (!button) return;
+  state.steelProgress.rows = state.steelProgress.rows.filter((row) => row.id !== button.dataset.deleteSteelRow);
+  if (!state.steelProgress.rows.length) state.steelProgress.rows.push(createSteelProgressRow());
+  saveState();
+  renderSteelRowsOnly();
+}
+
+function addSteelProgressRow() {
+  state.steelProgress.rows.push(createSteelProgressRow());
+  saveState();
+  renderSteelRowsOnly();
+}
+
+function renderSteelRowsOnly() {
+  const tbody = document.getElementById("steelProgressRows");
+  tbody.innerHTML = "";
+  state.steelProgress.rows.forEach((row) => tbody.append(steelProgressRowElement(row)));
+  renderSteelProgressTotals();
+}
+
+function updateSteelProgressRowDisplay(tr, row) {
+  const totals = calculateSteelProgressRow(row);
+  tr.querySelector('[data-steel-calc="kgm"]').value = formatNumber(totals.kgm);
+  tr.querySelector('[data-steel-calc="gross"]').value = formatNumber(totals.gross);
+  tr.querySelector('[data-steel-calc="net"]').value = formatNumber(totals.net);
+  tr.querySelector('[data-steel-calc="current"]').value = formatNumber(totals.current);
+  tr.querySelector('[data-steel-calc="unitPrice"]').value = formatNumber(totals.unitPrice);
+  tr.querySelector('[data-steel-calc="amount"]').value = formatCurrency(totals.amount);
+}
+
+function calculateSteelProgressRow(row) {
+  const kgm = rebarDiameters.find((item) => item.diameter === row.diameter)?.kgm || 0;
+  const unitPrice = parseProgressNumber(state.steelProgress.prices[row.diameter]);
+  const gross = parseProgressNumber(row.count) * parseProgressNumber(row.length) * kgm;
+  const net = Math.max(gross - parseProgressNumber(row.deduction), 0);
+  const current = Math.max(net - parseProgressNumber(row.previous), 0);
+  const amount = current * unitPrice;
+  return { kgm, gross, net, current, unitPrice, amount };
+}
+
+function renderSteelProgressTotals() {
+  const totals = state.steelProgress.rows.reduce((acc, row) => {
+    const rowTotals = calculateSteelProgressRow(row);
+    acc.gross += rowTotals.gross;
+    acc.net += rowTotals.net;
+    acc.current += rowTotals.current;
+    acc.amount += rowTotals.amount;
+    const diameterTotal = acc.byDiameter[row.diameter] || { net: 0, current: 0, amount: 0 };
+    diameterTotal.net += rowTotals.net;
+    diameterTotal.current += rowTotals.current;
+    diameterTotal.amount += rowTotals.amount;
+    acc.byDiameter[row.diameter] = diameterTotal;
+    return acc;
+  }, { gross: 0, net: 0, current: 0, amount: 0, byDiameter: {} });
+
+  document.getElementById("steelProgressTotals").innerHTML = `
+    ${summaryCardHtml("Toplam brüt kg", `${formatNumber(totals.gross)} kg`)}
+    ${summaryCardHtml("Toplam net kg", `${formatNumber(totals.net)} kg`)}
+    ${summaryCardHtml("Bu hakediş toplam kg", `${formatNumber(totals.current)} kg`)}
+    ${summaryCardHtml("Genel toplam tutar", formatCurrency(totals.amount))}
+  `;
+
+  document.getElementById("steelDiameterSummary").innerHTML = rebarDiameters.map((item) => {
+    const total = totals.byDiameter[item.diameter] || { net: 0, current: 0, amount: 0 };
+    return `
+      <article class="progress-class-card">
+        <strong>${item.diameter}</strong>
+        <span>Net: ${formatNumber(total.net)} kg</span>
+        <span>Bu hakediş: ${formatNumber(total.current)} kg</span>
+        <b>${formatCurrency(total.amount)}</b>
+      </article>
+    `;
+  }).join("");
 }
 
 function itemCard({ title, meta, body, foot, badge, collection, id }) {

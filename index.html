@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Saha Defteri</title>
-    <link rel="stylesheet" href="styles.css?v=20260707-concrete-progress" />
+    <link rel="stylesheet" href="styles.css?v=20260707-steel-progress" />
   </head>
   <body>
     <div class="app-shell">
@@ -362,9 +362,10 @@
         <section class="view" id="progress">
           <div class="records-panel">
             <div class="record-tabs" aria-label="Hakediş türü">
-              <button class="site-tab active" type="button">Beton</button>
+              <button class="site-tab active" type="button" data-progress-panel="concreteProgressPanel">Beton</button>
+              <button class="site-tab" type="button" data-progress-panel="steelProgressPanel">Demir</button>
             </div>
-            <section class="panel progress-print-area" id="concreteProgressModule">
+            <section class="panel progress-print-area progress-panel active" id="concreteProgressPanel">
               <div class="panel-header">
                 <h2>Beton Hakediş</h2>
                 <span>Metraj ve tutar</span>
@@ -403,6 +404,46 @@
               </div>
               <section class="progress-summary-grid" id="concreteProgressTotals"></section>
               <section class="progress-class-summary" id="concreteClassSummary"></section>
+            </section>
+            <section class="panel progress-print-area progress-panel" id="steelProgressPanel">
+              <div class="panel-header">
+                <h2>Demir Hakediş</h2>
+                <span>Kg ve tutar</span>
+              </div>
+              <div class="progress-meta-grid">
+                <label>Proje adı<input id="steelProgressProjectName" name="projectName" placeholder="Örn. Sahil Apartmanı" /></label>
+                <label>Hakediş no<input id="steelProgressNo" name="progressNo" type="number" min="1" step="1" /></label>
+                <label>Tarih<input id="steelProgressDate" name="progressDate" type="date" /></label>
+              </div>
+              <section class="rebar-price-grid" id="steelPriceCards"></section>
+              <div class="table-wrap progress-table-wrap">
+                <table class="progress-table steel-progress-table">
+                  <thead>
+                    <tr>
+                      <th>Yapı elemanı</th>
+                      <th>Kat</th>
+                      <th>Çap</th>
+                      <th>Adet</th>
+                      <th>Boy</th>
+                      <th>kg/m</th>
+                      <th>Brüt kg</th>
+                      <th>Düşülen kg</th>
+                      <th>Net kg</th>
+                      <th>Önceki kg</th>
+                      <th>Bu hakediş kg</th>
+                      <th>₺/kg</th>
+                      <th>Tutar</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="steelProgressRows"></tbody>
+                </table>
+              </div>
+              <div class="button-row">
+                <button class="primary-button" id="addSteelProgressRow" type="button">Satır Ekle</button>
+              </div>
+              <section class="progress-summary-grid" id="steelProgressTotals"></section>
+              <section class="progress-class-summary" id="steelDiameterSummary"></section>
             </section>
           </div>
         </section>
@@ -468,6 +509,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=20260707-concrete-progress"></script>
+    <script src="app.js?v=20260707-steel-progress"></script>
   </body>
 </html>
