@@ -1,6 +1,8 @@
 const storageKey = "saha-defteri-v1";
+const backupStorageKey = "saha-defteri-v1-backup";
 const settingsKey = "saha-defteri-settings-v1";
 const spreadsheetId = "1xfp9vUbdJpq39P1fZgYVb5rHqGr5b9HPKfujuai4YaM";
+const defaultScriptUrl = "https://script.google.com/macros/s/AKfycbwgbTxClE3WYngGg_mb3OMPK4Krjpb6wobNMdqEIBGWWUNvGdYU2OHH1Q3oPmubmQW8/exec";
 
 const initialState = {
   sites: [],
@@ -49,6 +51,7 @@ let state = loadState();
 let settings = loadSettings();
 let syncTimer = null;
 let isSyncing = false;
+let isRestoringFromSheets = false;
 let activeSiteId = state.sites[0]?.id || "";
 let editingReportId = "";
 let editingPlanId = "";
@@ -186,7 +189,8 @@ document.getElementById("reportModal").addEventListener("click", (event) => {
 document.getElementById("scriptUrl").value = settings.scriptUrl || "";
 document.getElementById("settingsForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  settings.scriptUrl = document.getElementById("scriptUrl").value.trim();
+  settings.scriptUrl = document.getElementById("scriptUrl").value.trim() || defaultScriptUrl;
+  document.getElementById("scriptUrl").value = settings.scriptUrl;
   saveSettings();
   setSyncStatus("Bağlantı kaydedildi. Yeni kayıtlar ilgili Sheets sayfasına otomatik yazılacak.");
 });
@@ -215,6 +219,7 @@ bindForm("issueForm", "issues", "unshift", (data) => ({
 }));
 
 render();
+restoreFromSheetsIfLocalDataMissing();
 
 function bindForm(id, collection, insertMethod, buildItem) {
   const form = document.getElementById(id);
@@ -482,7 +487,19 @@ function switchProgressPanel(panelId) {
 
 function loadState() {
   const saved = localStorage.getItem(storageKey);
+  const backup = localStorage.getItem(backupStorageKey);
+  if (!saved && backup) return parseStoredState(backup);
   if (!saved) return structuredClone(initialState);
+  const parsed = parseStoredState(saved);
+  if (hasAnyLocalData(parsed)) return parsed;
+  if (backup) {
+    const backupParsed = parseStoredState(backup);
+    if (hasAnyLocalData(backupParsed)) return backupParsed;
+  }
+  return parsed;
+}
+
+function parseStoredState(saved) {
   try {
     return normalizeState({ ...structuredClone(initialState), ...JSON.parse(saved) });
   } catch {
@@ -596,16 +613,18 @@ function normalizeAreaProgressRow(row = {}) {
 }
 
 function saveState() {
+  const existing = localStorage.getItem(storageKey);
+  if (existing) localStorage.setItem(backupStorageKey, existing);
   localStorage.setItem(storageKey, JSON.stringify(state));
 }
 
 function loadSettings() {
   const saved = localStorage.getItem(settingsKey);
-  if (!saved) return { scriptUrl: "", spreadsheetId };
+  if (!saved) return { scriptUrl: defaultScriptUrl, spreadsheetId };
   try {
-    return { scriptUrl: "", spreadsheetId, ...JSON.parse(saved) };
+    return { scriptUrl: defaultScriptUrl, spreadsheetId, ...JSON.parse(saved) };
   } catch {
-    return { scriptUrl: "", spreadsheetId };
+    return { scriptUrl: defaultScriptUrl, spreadsheetId };
   }
 }
 
@@ -2111,6 +2130,28 @@ async function autoPullFromSheets() {
   }
 }
 
+async function restoreFromSheetsIfLocalDataMissing() {
+  if (!settings.scriptUrl || isRestoringFromSheets || hasAnyLocalData(state)) return;
+  isRestoringFromSheets = true;
+  try {
+    setSyncStatus("Cihazda kayıt görünmüyor. Sheets'ten otomatik geri yükleme deneniyor...");
+    const response = await loadSheetsData();
+    const remoteState = normalizeRemoteState(response.data || {});
+    if (!hasAnyLocalData(remoteState)) {
+      setSyncStatus("Cihazda kayıt yok. Bağlı Sheets dosyasında da kayıt bulunamadı.");
+      return;
+    }
+    state = { ...state, ...remoteState };
+    saveState();
+    render();
+    setSyncStatus(`Kayıtlar Sheets'ten geri yüklendi: ${countLocalRecords(state)} kayıt.`);
+  } catch (error) {
+    setSyncStatus(`Otomatik geri yükleme hatası: ${error.message}`);
+  } finally {
+    isRestoringFromSheets = false;
+  }
+}
+
 async function pullFromSheets() {
   if (!requireScriptUrl()) return;
   setSyncStatus("Sheets'ten veri çekiliyor...");
@@ -2264,8 +2305,19 @@ function normalizeRemoteState(remote) {
   };
 }
 
+function hasAnyLocalData(data) {
+  return countLocalRecords(data) > 0;
+}
+
+function countLocalRecords(data) {
+  return ["sites", "reports", "plans", "prePlans", "orders", "issues"].reduce((total, key) => {
+    return total + (Array.isArray(data?.[key]) ? data[key].length : 0);
+  }, 0);
+}
+
 function requireScriptUrl() {
-  settings.scriptUrl = document.getElementById("scriptUrl").value.trim();
+  settings.scriptUrl = document.getElementById("scriptUrl").value.trim() || defaultScriptUrl;
+  document.getElementById("scriptUrl").value = settings.scriptUrl;
   saveSettings();
   if (settings.scriptUrl) return true;
   setSyncStatus("Önce Apps Script web app URL'sini girmen gerekiyor.");
