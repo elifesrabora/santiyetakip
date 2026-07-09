@@ -714,6 +714,7 @@ textarea {
   padding: 13px;
   background: #fff;
   color: var(--ink);
+  cursor: grab;
   text-align: left;
 }
 
@@ -851,6 +852,22 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.plan-chip.dragging {
+  opacity: 0.55;
+}
+
+.day-column.drop-target {
+  border-color: var(--accent);
+  background: #f7fbf8;
+}
+
+.plan-chip-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
 .plan-chip span {
   color: var(--muted);
   font-size: 0.75rem;
@@ -859,6 +876,36 @@ textarea {
 
 .plan-chip:hover {
   border-color: var(--accent);
+}
+
+.status-pill {
+  min-height: 26px;
+  min-width: max-content;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 9px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.status-pill.waiting {
+  border-color: #d6c69d;
+  background: #fff8e3;
+  color: #86651b;
+}
+
+.status-pill.active {
+  border-color: #b8d4c8;
+  background: #eef8f3;
+  color: var(--accent);
+}
+
+.status-pill.done {
+  border-color: #b8d1a8;
+  background: #f0f8ea;
+  color: #46722b;
 }
 
 .plan-list-header {

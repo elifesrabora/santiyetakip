@@ -11,11 +11,11 @@ const TABLES = {
   },
   plans: {
     sheetName: "Planlamalar",
-    headers: ["id", "date", "site", "title", "crew", "detail", "note"]
+    headers: ["id", "date", "site", "title", "crew", "detail", "note", "status"]
   },
   prePlans: {
     sheetName: "Plan Oncesi",
-    headers: ["id", "planId", "date", "site", "planTitle", "summary", "tasks", "note"]
+    headers: ["id", "planId", "date", "site", "planTitle", "summary", "tasks", "note", "status"]
   },
   orders: {
     sheetName: "Siparisler",

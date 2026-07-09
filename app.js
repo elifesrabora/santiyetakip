@@ -59,6 +59,7 @@ let editingPrePlanId = "";
 let editingOrderId = "";
 let activeWeekStart;
 let activeReportModalId = "";
+let draggedPlanId = "";
 let calculatorDisplay = "0";
 let calculatorStoredValue = null;
 let calculatorPendingOperator = "";
@@ -77,6 +78,8 @@ const rebarDiameters = [
   { diameter: "Ø28", kgm: 4.83 },
   { diameter: "Ø32", kgm: 6.313 }
 ];
+
+const workStatuses = ["Bekliyor", "Devam ediyor", "Yapıldı"];
 
 const areaProgressModules = {
   wallProgress: {
@@ -325,7 +328,8 @@ function bindPlanForm() {
       crews,
       crew: crews.map((crew) => crew.name).filter(Boolean).join(", "),
       detail: crews.map((crew) => `${crew.name || "Ekip"}: ${crew.text}`).join(" | "),
-      note: data.note
+      note: data.note,
+      status: state.plans.find((plan) => plan.id === editingPlanId)?.status || "Bekliyor"
     };
 
     const wasEditing = Boolean(editingPlanId);
@@ -376,7 +380,8 @@ function bindPrePlanForm() {
       site: plan.site,
       tasks,
       summary: tasks.map((task) => `${task.title} (${task.status})`).join(" | "),
-      note: data.note
+      note: data.note,
+      status: state.prePlans.find((prePlan) => prePlan.id === editingPrePlanId)?.status || "Bekliyor"
     };
 
     const wasEditing = Boolean(editingPrePlanId);
@@ -882,6 +887,7 @@ function renderPlanningCalendar() {
     const dayPlans = state.plans.filter((plan) => toDateKey(plan.date) === dateKey);
     const column = document.createElement("section");
     column.className = `day-column ${dateKey === today ? "today" : ""}`;
+    column.dataset.planDropDate = dateKey;
     column.innerHTML = `
       <div class="day-head">
         <strong>${new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(day)}</strong>
@@ -896,12 +902,29 @@ function renderPlanningCalendar() {
       column.append(empty);
     }
     dayPlans.forEach((plan) => {
-      const chip = document.createElement("button");
-      chip.type = "button";
+      const chip = document.createElement("article");
       chip.className = "plan-chip";
+      chip.tabIndex = 0;
+      chip.role = "button";
       chip.dataset.openPlan = plan.id;
-      chip.innerHTML = `<strong>${escapeHtml(plan.title || "Plan")}</strong><span>${escapeHtml(plan.site)}</span>`;
-      chip.addEventListener("click", () => openPlanDetails(plan.id));
+      chip.draggable = true;
+      chip.dataset.dragPlan = plan.id;
+      chip.innerHTML = `
+        <span class="plan-chip-top">
+          <strong>${escapeHtml(plan.title || "Plan")}</strong>
+          ${statusBadgeHtml(planStatus(plan), "plans", plan.id)}
+        </span>
+        <span>${escapeHtml(plan.site)}</span>
+      `;
+      chip.addEventListener("click", (event) => {
+        if (event.target.closest("[data-cycle-status]")) return;
+        openPlanDetails(plan.id);
+      });
+      chip.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openPlanDetails(plan.id);
+      });
       column.append(chip);
     });
     calendar.append(column);
@@ -1666,6 +1689,7 @@ function planCard(plan) {
         <p>${escapeHtml(plan.site)} / ${escapeHtml(plan.crew || "Ekip bilgisi yok")}</p>
       </div>
       <div class="item-actions">
+        ${statusBadgeHtml(planStatus(plan), "plans", plan.id)}
         <button class="tiny-button" title="Düzenle" data-edit="plans" data-id="${plan.id}">✎</button>
         <button class="tiny-button" title="Sil" data-delete="plans" data-id="${plan.id}">x</button>
       </div>
@@ -1696,6 +1720,7 @@ function prePlanCard(prePlan) {
         <p>${escapeHtml(prePlan.site || "Şantiye yok")}</p>
       </div>
       <div class="item-actions">
+        ${statusBadgeHtml(prePlanStatus(prePlan), "prePlans", prePlan.id)}
         <button class="tiny-button" title="Düzenle" data-edit="prePlans" data-id="${prePlan.id}">✎</button>
         <button class="tiny-button" title="Sil" data-delete="prePlans" data-id="${prePlan.id}">x</button>
       </div>
@@ -1706,6 +1731,50 @@ function prePlanCard(prePlan) {
   return card;
 }
 
+function statusBadgeHtml(status, collection, id) {
+  const safeStatus = escapeHtml(status);
+  const statusClass = status === "Yapıldı" ? "done" : status === "Devam ediyor" ? "active" : "waiting";
+  return `<button class="status-pill ${statusClass}" type="button" title="Durumu değiştir" data-cycle-status="${collection}" data-id="${id}">${safeStatus}</button>`;
+}
+
+function planStatus(plan) {
+  return workStatuses.includes(plan.status) ? plan.status : "Bekliyor";
+}
+
+function prePlanStatus(prePlan) {
+  return workStatuses.includes(prePlan.status) ? prePlan.status : "Bekliyor";
+}
+
+function cycleWorkStatus(collection, id) {
+  if (!["plans", "prePlans"].includes(collection)) return;
+  const item = state[collection].find((entry) => entry.id === id);
+  if (!item) return;
+  const current = collection === "plans" ? planStatus(item) : prePlanStatus(item);
+  const nextStatus = workStatuses[(workStatuses.indexOf(current) + 1) % workStatuses.length];
+  item.status = nextStatus;
+  saveState();
+  render();
+  upsertRecordToSheets(collection, item);
+}
+
+function movePlanToDate(planId, newDate) {
+  const plan = state.plans.find((item) => item.id === planId);
+  if (!plan || toDateKey(plan.date) === newDate) return;
+  plan.date = newDate;
+  state.prePlans.forEach((prePlan) => {
+    if (prePlan.planId === plan.id) {
+      prePlan.date = newDate;
+      prePlan.site = plan.site;
+      prePlan.planTitle = plan.title || "Plan";
+      upsertRecordToSheets("prePlans", prePlan);
+    }
+  });
+  activeWeekStart = getWeekStart(newDate);
+  saveState();
+  render();
+  upsertRecordToSheets("plans", plan);
+}
+
 function renderEmpty(target, text) {
   const empty = document.createElement("p");
   empty.className = "empty";
@@ -1714,6 +1783,14 @@ function renderEmpty(target, text) {
 }
 
 document.addEventListener("click", (event) => {
+  const statusButton = event.target.closest("[data-cycle-status]");
+  if (statusButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    cycleWorkStatus(statusButton.dataset.cycleStatus, statusButton.dataset.id);
+    return;
+  }
+
   const reportButton = event.target.closest("[data-open-report]");
   if (reportButton) {
     event.preventDefault();
@@ -1770,6 +1847,43 @@ document.addEventListener("click", (event) => {
   saveState();
   render();
   scheduleAutoSync();
+});
+
+document.addEventListener("dragstart", (event) => {
+  const chip = event.target.closest("[data-drag-plan]");
+  if (!chip) return;
+  draggedPlanId = chip.dataset.dragPlan;
+  chip.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", draggedPlanId);
+});
+
+document.addEventListener("dragover", (event) => {
+  const column = event.target.closest("[data-plan-drop-date]");
+  if (!column || !draggedPlanId) return;
+  event.preventDefault();
+  column.classList.add("drop-target");
+});
+
+document.addEventListener("dragleave", (event) => {
+  const column = event.target.closest("[data-plan-drop-date]");
+  if (column) column.classList.remove("drop-target");
+});
+
+document.addEventListener("drop", (event) => {
+  const column = event.target.closest("[data-plan-drop-date]");
+  if (!column || !draggedPlanId) return;
+  event.preventDefault();
+  const newDate = column.dataset.planDropDate;
+  movePlanToDate(draggedPlanId, newDate);
+  draggedPlanId = "";
+  document.querySelectorAll(".drop-target").forEach((target) => target.classList.remove("drop-target"));
+});
+
+document.addEventListener("dragend", () => {
+  draggedPlanId = "";
+  document.querySelectorAll(".plan-chip.dragging").forEach((chip) => chip.classList.remove("dragging"));
+  document.querySelectorAll(".drop-target").forEach((target) => target.classList.remove("drop-target"));
 });
 
 function editReport(id) {
