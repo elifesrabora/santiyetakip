@@ -910,11 +910,9 @@ function renderPlanningCalendar() {
       chip.draggable = true;
       chip.dataset.dragPlan = plan.id;
       chip.innerHTML = `
-        <span class="plan-chip-top">
-          <strong>${escapeHtml(plan.title || "Plan")}</strong>
-          ${statusBadgeHtml(planStatus(plan), "plans", plan.id)}
-        </span>
+        <strong>${escapeHtml(plan.title || "Plan")}</strong>
         <span>${escapeHtml(plan.site)}</span>
+        <span class="plan-chip-status">${statusBadgeHtml(planStatus(plan), "plans", plan.id)}</span>
       `;
       chip.addEventListener("click", (event) => {
         if (event.target.closest("[data-cycle-status]")) return;
@@ -2196,38 +2194,88 @@ function downloadActiveReport() {
 function downloadReportById(id) {
   const report = state.reports.find((item) => item.id === id);
   if (!report) return;
-  const filename = `${slugify(report.site)}-${report.date}-gunluk-rapor.txt`;
-  downloadFile(filename, reportText(report), "text/plain;charset=utf-8");
+  const filename = `${slugify(report.site)}-${report.date}-gunluk-rapor.html`;
+  downloadFile(filename, reportDocumentHtml(report), "text/html;charset=utf-8");
 }
 
 function reportDetailHtml(report) {
+  return reportPrintableHtml(report, false);
+}
+
+function reportPrintableHtml(report, standalone = false) {
   const crews = getReportCrews(report);
   const crewHtml = crews.length
     ? crews.map((crew) => `
-        <div class="item-section">
+        <article class="report-team-block">
+          <span>Ekip</span>
           <strong>${escapeHtml(crew.name || "Ekip")}</strong>
           <p>${escapeHtml(crew.text || "Not girilmedi")}</p>
-        </div>
+        </article>
       `).join("")
-    : `<p>${escapeHtml(report.work || "Rapor detayı yok")}</p>`;
+    : `<article class="report-team-block"><span>Rapor</span><strong>Genel</strong><p>${escapeHtml(report.work || "Rapor detayı yok")}</p></article>`;
 
   return `
-    ${crewHtml}
-    ${report.note ? `<div class="item-section"><strong>Risk / olay / not</strong><p>${escapeHtml(report.note)}</p></div>` : ""}
+    <article class="report-paper ${standalone ? "standalone-report" : ""}">
+      <header class="report-paper-header">
+        <div>
+          <p>Günlük Saha Raporu</p>
+          <h1>${escapeHtml(report.site || "Şantiye")}</h1>
+        </div>
+        <div class="report-date-box">
+          <span>Tarih</span>
+          <strong>${formatDate(report.date)}</strong>
+        </div>
+      </header>
+      <section class="report-info-grid">
+        <div><span>Şantiye</span><strong>${escapeHtml(report.site || "Şantiye yok")}</strong></div>
+        <div><span>Ekip sayısı</span><strong>${crews.length || 1}</strong></div>
+        <div><span>Kayıt tipi</span><strong>Günlük rapor</strong></div>
+      </section>
+      <section class="report-section">
+        <h2>Ekip Çalışmaları</h2>
+        <div class="report-team-grid">${crewHtml}</div>
+      </section>
+      ${report.note ? `
+        <section class="report-section">
+          <h2>Notlar</h2>
+          <div class="report-note">${escapeHtml(report.note)}</div>
+        </section>
+      ` : ""}
+    </article>
   `;
 }
 
-function reportText(report) {
-  const crews = getReportCrews(report)
-    .map((crew) => `${crew.name || "Ekip"}\n${crew.text || "Not girilmedi"}`)
-    .join("\n\n");
-  return [
-    `Şantiye: ${report.site}`,
-    `Tarih: ${formatDate(report.date)}`,
-    "",
-    crews || report.work || "Rapor detayı yok",
-    report.note ? `\nNot: ${report.note}` : ""
-  ].join("\n");
+function reportDocumentHtml(report) {
+  return `<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(report.site || "Gunluk Rapor")} - ${escapeHtml(formatDate(report.date))}</title>
+  <style>
+    body { margin: 0; background: #f4f6f3; color: #17211c; font-family: Arial, sans-serif; }
+    .report-export-page { max-width: 900px; margin: 28px auto; padding: 0 18px; }
+    .report-paper { border: 1px solid #dbe3de; border-radius: 10px; padding: 28px; background: #fff; }
+    .report-paper-header { display: flex; justify-content: space-between; gap: 18px; border-bottom: 2px solid #176b52; padding-bottom: 18px; }
+    .report-paper-header p, .report-info-grid span, .report-team-block span, .report-date-box span { margin: 0; color: #66726c; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    .report-paper-header h1 { margin: 6px 0 0; font-size: 30px; }
+    .report-date-box { min-width: 150px; border: 1px solid #dbe3de; border-radius: 8px; padding: 12px; text-align: right; background: #eef3ef; }
+    .report-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0; }
+    .report-info-grid div, .report-team-block, .report-note { border: 1px solid #dbe3de; border-radius: 8px; padding: 14px; background: #fbfcfb; }
+    .report-info-grid strong { display: block; margin-top: 6px; }
+    .report-section { margin-top: 20px; }
+    .report-section h2 { margin: 0 0 10px; font-size: 18px; }
+    .report-team-grid { display: grid; gap: 10px; }
+    .report-team-block strong { display: block; margin: 5px 0 8px; font-size: 17px; }
+    .report-team-block p, .report-note { line-height: 1.55; white-space: pre-wrap; }
+    @media print { body { background: #fff; } .report-export-page { margin: 0; max-width: none; padding: 0; } .report-paper { border: 0; border-radius: 0; } }
+  </style>
+</head>
+<body>
+  <main class="report-export-page">
+    ${reportPrintableHtml(report, true)}
+  </main>
+</body>
+</html>`;
 }
 
 function cancelReportEdit() {
