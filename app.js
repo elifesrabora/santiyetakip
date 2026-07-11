@@ -1702,6 +1702,8 @@ function prePlanCard(prePlan) {
   const card = document.createElement("details");
   card.className = "item";
   const tasks = getPrepTasks(prePlan);
+  const title = prePlanTitle(prePlan, tasks);
+  const relatedPlan = planLabelById(prePlan.planId, prePlan);
   const taskHtml = tasks.length
     ? tasks.map((task) => `
         <div class="item-section">
@@ -1714,8 +1716,8 @@ function prePlanCard(prePlan) {
   card.innerHTML = `
     <summary class="item-top">
       <div>
-        <strong>${escapeHtml(planLabelById(prePlan.planId, prePlan))}</strong>
-        <p>${escapeHtml(prePlan.site || "Şantiye yok")}</p>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(prePlan.site || "Şantiye yok")} / ${formatDate(prePlan.date)}</p>
       </div>
       <div class="item-actions">
         ${statusBadgeHtml(prePlanStatus(prePlan), "prePlans", prePlan.id)}
@@ -1723,10 +1725,22 @@ function prePlanCard(prePlan) {
         <button class="tiny-button" title="Sil" data-delete="prePlans" data-id="${prePlan.id}">x</button>
       </div>
     </summary>
+    <div class="item-section related-plan-section">
+      <strong>İlişkili Ana Plan</strong>
+      <p>${escapeHtml(relatedPlan)}</p>
+    </div>
     ${taskHtml}
     ${prePlan.note ? `<p>${escapeHtml(prePlan.note)}</p>` : ""}
   `;
   return card;
+}
+
+function prePlanTitle(prePlan, tasks = getPrepTasks(prePlan)) {
+  if (tasks.length) {
+    const firstTitle = tasks[0].title || "Hazırlık işi";
+    return tasks.length > 1 ? `${firstTitle} + ${tasks.length - 1} iş` : firstTitle;
+  }
+  return prePlan.summary || prePlan.planTitle || "Hazırlık işi";
 }
 
 function statusBadgeHtml(status, collection, id) {

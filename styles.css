@@ -914,6 +914,10 @@ textarea {
   color: #46722b;
 }
 
+.related-plan-section {
+  background: var(--surface-2);
+}
+
 .report-paper {
   display: grid;
   gap: 18px;
